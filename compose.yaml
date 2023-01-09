@@ -1,0 +1,6 @@
+services:
+  typegen:
+    build: .
+    volumes:
+      - ./spec:/app/spec
+      - ./generated:/app/generated
