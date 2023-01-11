@@ -75,7 +75,7 @@ def read_structure_definition(definition: dict[str, Any]) -> StructureDefinition
     elements = (e for e in elements if e["id"] != resource["id"])
 
     structure_definition = StructureDefinition(
-        id=resource["id"],
+        id=definition["id"],
         kind=StructureDefinitionKind.from_str(definition["kind"]),
         docstring=resource["definition"],
         type=parse_element_type(resource),
