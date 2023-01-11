@@ -37,6 +37,8 @@ def main() -> None:
                 "from typing import TypedDict, List as List_\n",
                 "from typing_extensions import Required as Required_\n",
                 "\n\n",
-                "\n\n\n".join(ast.unparse(tree) for tree in ast_),
+                "\n\n\n".join(
+                    ast.unparse(ast.fix_missing_locations(tree)) for tree in ast_
+                ),
             ]
         )

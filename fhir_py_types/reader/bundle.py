@@ -5,7 +5,11 @@ import os
 
 from typing import Any, Iterable, List, Optional
 
-from fhir_py_types import StructureDefinition, StructurePropertyType
+from fhir_py_types import (
+    StructureDefinition,
+    StructureDefinitionKind,
+    StructurePropertyType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +65,7 @@ def read_structure_definition(definition: dict[str, Any]) -> StructureDefinition
 
     structure_definition = StructureDefinition(
         id=resource["id"],
+        kind=StructureDefinitionKind.from_str(definition["kind"]),
         docstring=resource["definition"],
         type=parse_element_type(resource),
         elements={},

@@ -1,10 +1,25 @@
 import ast
+from dataclasses import replace
+from enum import Enum, auto
 import functools
 import itertools
+import logging
 
 from typing import Iterable, List, Tuple, cast
 
-from fhir_py_types import StructureDefinition, StructurePropertyType
+from fhir_py_types import (
+    StructureDefinition,
+    StructureDefinitionKind,
+    StructurePropertyType,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+class AnnotationForm(Enum):
+    Property = auto()
+    TypeAlias = auto()
 
 
 def fold_into_union_node(nodes: Iterable[ast.expr]) -> ast.expr:
@@ -14,7 +29,9 @@ def fold_into_union_node(nodes: Iterable[ast.expr]) -> ast.expr:
     )
 
 
-def make_type_annotation(type_: StructurePropertyType) -> ast.expr:
+def make_type_annotation(
+    type_: StructurePropertyType, form: AnnotationForm
+) -> ast.expr:
     if type_.target_profile:
         annotation: ast.expr = ast.Subscript(
             value=ast.Name(type_.code),
@@ -28,53 +45,92 @@ def make_type_annotation(type_: StructurePropertyType) -> ast.expr:
     if type_.isarray:
         annotation = ast.Subscript(value=ast.Name("List_"), slice=annotation)
 
-    if type_.required:
+    if type_.required and form == AnnotationForm.Property:
         annotation = ast.Subscript(value=ast.Name("Required_"), slice=annotation)
 
     return annotation
 
 
-def make_ast_node(property: StructureDefinition) -> Iterable[ast.stmt]:
-    choice_of_data_types: List[Tuple[StructurePropertyType | None, ast.expr]] = (
-        [(t, make_type_annotation(t)) for t in property.type]
+def make_property_identifier(
+    property: StructureDefinition, type_: StructurePropertyType
+) -> str:
+    polymorphic = len(property.type or []) > 1
+
+    return property.id + type_.code.capitalize() if polymorphic else property.id
+
+
+def make_assignment_node(
+    identifier: str, annotation: ast.expr, form: AnnotationForm
+) -> ast.stmt:
+    match form:
+        case AnnotationForm.Property:
+            return ast.AnnAssign(
+                target=ast.Name(identifier), annotation=annotation, simple=1
+            )
+        case AnnotationForm.TypeAlias:
+            return ast.Assign(targets=[ast.Name(identifier)], value=annotation)
+
+
+def make_annotated_node(
+    property: StructureDefinition, form: AnnotationForm
+) -> Iterable[ast.stmt]:
+    annotated_identifiers: List[Tuple[str, ast.expr]] = (
+        [
+            (
+                make_property_identifier(property, t),
+                make_type_annotation(t, form),
+            )
+            for t in property.type
+        ]
         if property.type
-        else [(None, ast.Name("Any"))]
+        else [(property.id, ast.Name("Any"))]
     )
 
     return itertools.chain.from_iterable(
         [
-            ast.AnnAssign(
-                target=ast.Name(
-                    property.id
-                    if len(choice_of_data_types) == 1 or type_ is None
-                    else property.id + type_.code.capitalize()
-                ),
-                annotation=annotation,
-                simple=1,
-            ),
+            make_assignment_node(identifier, annotation, form),
             ast.Expr(value=ast.Str(property.docstring)),
         ]
-        for (type_, annotation) in choice_of_data_types
+        for (identifier, annotation) in annotated_identifiers
     )
 
 
 def build_ast(
     structure_definitions: Iterable[StructureDefinition],
-) -> Iterable[ast.ClassDef]:
-    typedefinitions = []
+) -> Iterable[ast.stmt]:
+    typedefinitions: List[ast.stmt] = []
 
     for definition in structure_definitions:
-        klass = ast.ClassDef(
-            definition.id,
-            bases=[ast.Name("TypedDict")],
-            body=[ast.Expr(value=ast.Str(definition.docstring))],
-            decorator_list=[],
-            keywords=[ast.keyword(arg="total", value=ast.Name("False"))],
-        )
+        match definition.kind:
+            case StructureDefinitionKind.RESOURCE | StructureDefinitionKind.COMPLEX:
+                klass = ast.ClassDef(
+                    definition.id,
+                    bases=[ast.Name("TypedDict")],
+                    body=[ast.Expr(value=ast.Str(definition.docstring))],
+                    decorator_list=[],
+                    keywords=[ast.keyword(arg="total", value=ast.Name("False"))],
+                )
 
-        for property in definition.elements.values():
-            klass.body.extend(make_ast_node(property))
+                for property in definition.elements.values():
+                    klass.body.extend(
+                        make_annotated_node(property, AnnotationForm.Property)
+                    )
 
-        typedefinitions.append(klass)
+                typedefinitions.append(klass)
+
+            case StructureDefinitionKind.PRIMITIVE:
+                typedefinitions.extend(
+                    make_annotated_node(
+                        replace(definition, type=definition.elements["value"].type),
+                        AnnotationForm.TypeAlias,
+                    )
+                )
+
+            case _:
+                logger.warning(
+                    "Unsupported definition {} of kind {}, skipping".format(
+                        definition.id, definition.kind
+                    )
+                )
 
     return typedefinitions
