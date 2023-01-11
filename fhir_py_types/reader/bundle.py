@@ -11,6 +11,16 @@ from fhir_py_types import (
     StructurePropertyType,
 )
 
+FHIR_TO_SYSTEM_TYPE_MAP = {
+    "System.String": "str",
+    "System.Boolean": "bool",
+    "System.Time": "str",
+    "System.Date": "str",
+    "System.DateTime": "str",
+    "System.Decimal": "int",
+    "System.Integer": "int",
+}
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,6 +35,11 @@ def select_structure_definition_resources(bundle: DefinitionsBundle):
     )
 
 
+def parse_type_identifier(type_: dict[str, str]) -> str:
+    code = type_["code"].split("/")[-1]
+    return FHIR_TO_SYSTEM_TYPE_MAP.get(code, code)
+
+
 def parse_target_profile(target_profile: List[str]) -> List[str]:
     profiles = [p.split("/")[-2:] for p in target_profile]
     if any(type_ != "StructureDefinition" for type_, _ in profiles):
@@ -33,16 +48,17 @@ def parse_target_profile(target_profile: List[str]) -> List[str]:
 
 
 def parse_element_type(element: dict) -> Optional[List[StructurePropertyType]]:
-    type_ = element.get("type")
-    if type_ is not None:
+    choice_of_types: Optional[List[dict]] = element.get("type")
+
+    if choice_of_types is not None:
         return [
             StructurePropertyType(
-                code=category["code"].split("/")[-1],
-                target_profile=parse_target_profile(category.get("targetProfile", [])),
+                code=parse_type_identifier(type_),
+                target_profile=parse_target_profile(type_.get("targetProfile", [])),
                 required=element["min"] != 0,
                 isarray=element["max"] != "1",
             )
-            for category in type_
+            for type_ in choice_of_types
         ]
     else:
         return None
@@ -54,7 +70,7 @@ def parse_element_id(element: dict) -> str:
         logger.warning(
             "In parsing '{}' id: '{}' is a keyword".format(element["id"], element_id)
         )
-    # 'Choice of Data Types' are handled by property type, will not parse suffix
+    # 'Choice of Types' are handled by property type, will not parse suffix
     return element_id.removesuffix("[x]")
 
 
