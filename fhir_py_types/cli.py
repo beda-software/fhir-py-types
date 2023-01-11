@@ -34,7 +34,7 @@ def main() -> None:
     with open(os.path.abspath(args.outfile), "w") as resource_file:
         resource_file.writelines(
             [
-                "from typing import TypedDict, List as List_\n",
+                "from typing import TypedDict, List as List_, Any as Any_\n",
                 "from typing_extensions import Required as Required_\n",
                 "\n\n",
                 "\n\n\n".join(

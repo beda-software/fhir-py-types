@@ -3,9 +3,10 @@ from dataclasses import replace
 from enum import Enum, auto
 import functools
 import itertools
+import keyword
 import logging
 
-from typing import Iterable, List, Tuple, cast
+from typing import Iterable, List, Literal, Tuple, cast
 
 from fhir_py_types import (
     StructureDefinition,
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 class AnnotationForm(Enum):
     Property = auto()
     TypeAlias = auto()
+    Dict = auto()
 
 
 def fold_into_union_node(nodes: Iterable[ast.expr]) -> ast.expr:
@@ -45,22 +47,37 @@ def make_type_annotation(
     if type_.isarray:
         annotation = ast.Subscript(value=ast.Name("List_"), slice=annotation)
 
-    if type_.required and form == AnnotationForm.Property:
+    if type_.required and form != AnnotationForm.TypeAlias:
         annotation = ast.Subscript(value=ast.Name("Required_"), slice=annotation)
 
     return annotation
 
 
-def make_property_identifier(
-    property: StructureDefinition, type_: StructurePropertyType
+def format_identifier(
+    definition: StructureDefinition, type_: StructurePropertyType
 ) -> str:
-    polymorphic = len(property.type or []) > 1
+    polymorphic = len(definition.type or []) > 1
 
-    return property.id + type_.code.capitalize() if polymorphic else property.id
+    return definition.id + type_.code.capitalize() if polymorphic else definition.id
 
 
-def make_assignment_node(
-    identifier: str, annotation: ast.expr, form: AnnotationForm
+def zip_identifier_annotation(
+    definition: StructureDefinition, form: AnnotationForm
+) -> Iterable[Tuple[str, ast.expr]]:
+    return (
+        [
+            (format_identifier(definition, t), make_type_annotation(t, form))
+            for t in definition.type
+        ]
+        if definition.type
+        else [(definition.id, ast.Name("Any_"))]
+    )
+
+
+def make_assignment_statement(
+    identifier: str,
+    annotation: ast.expr,
+    form: Literal[AnnotationForm.Property, AnnotationForm.TypeAlias],
 ) -> ast.stmt:
     match form:
         case AnnotationForm.Property:
@@ -71,27 +88,79 @@ def make_assignment_node(
             return ast.Assign(targets=[ast.Name(identifier)], value=annotation)
 
 
-def make_annotated_node(
-    property: StructureDefinition, form: AnnotationForm
+def type_annotate(
+    defintion: StructureDefinition,
+    form: Literal[AnnotationForm.Property, AnnotationForm.TypeAlias],
 ) -> Iterable[ast.stmt]:
-    annotated_identifiers: List[Tuple[str, ast.expr]] = (
-        [
-            (
-                make_property_identifier(property, t),
-                make_type_annotation(t, form),
-            )
-            for t in property.type
-        ]
-        if property.type
-        else [(property.id, ast.Name("Any"))]
-    )
-
     return itertools.chain.from_iterable(
         [
-            make_assignment_node(identifier, annotation, form),
-            ast.Expr(value=ast.Str(property.docstring)),
+            make_assignment_statement(identifier, annotation, form),
+            ast.Expr(value=ast.Str(defintion.docstring)),
         ]
-        for (identifier, annotation) in annotated_identifiers
+        for (identifier, annotation) in zip_identifier_annotation(defintion, form)
+    )
+
+
+def define_class(definition: StructureDefinition) -> Iterable[ast.stmt]:
+    return [
+        ast.ClassDef(
+            definition.id,
+            bases=[ast.Name("TypedDict")],
+            body=[
+                ast.Expr(value=ast.Str(definition.docstring)),
+                *itertools.chain.from_iterable(
+                    type_annotate(property, AnnotationForm.Property)
+                    for property in definition.elements.values()
+                ),
+            ],
+            decorator_list=[],
+            keywords=[ast.keyword(arg="total", value=ast.Name("False"))],
+        )
+    ]
+
+
+def define_class_functional(definition: StructureDefinition) -> Iterable[ast.stmt]:
+    """
+    Build TypedDict for StructureDefinition with keyword properties,
+    does not include docstrings
+    """
+    properties = list(
+        itertools.chain.from_iterable(
+            zip_identifier_annotation(property, AnnotationForm.Dict)
+            for property in definition.elements.values()
+        )
+    )
+
+    return [
+        ast.Assign(
+            targets=[ast.Name(definition.id)],
+            value=ast.Call(
+                func=ast.Name("TypedDict"),
+                args=[
+                    ast.Str(definition.id),
+                    ast.Dict(
+                        keys=[ast.Str(identifier) for identifier, _ in properties],
+                        values=[annotation for _, annotation in properties],
+                    ),
+                ],
+                keywords=[ast.keyword(arg="total", value=ast.Name("False"))],
+            ),
+        )
+    ]
+
+
+def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
+    return type_annotate(
+        replace(definition, type=definition.elements["value"].type),
+        AnnotationForm.TypeAlias,
+    )
+
+
+def has_keywords(definition: StructureDefinition) -> bool:
+    return any(
+        keyword.iskeyword(format_identifier(property, t))
+        for property in definition.elements.values()
+        for t in (property.type or [])
     )
 
 
@@ -103,28 +172,13 @@ def build_ast(
     for definition in structure_definitions:
         match definition.kind:
             case StructureDefinitionKind.RESOURCE | StructureDefinitionKind.COMPLEX:
-                klass = ast.ClassDef(
-                    definition.id,
-                    bases=[ast.Name("TypedDict")],
-                    body=[ast.Expr(value=ast.Str(definition.docstring))],
-                    decorator_list=[],
-                    keywords=[ast.keyword(arg="total", value=ast.Name("False"))],
-                )
-
-                for property in definition.elements.values():
-                    klass.body.extend(
-                        make_annotated_node(property, AnnotationForm.Property)
-                    )
-
-                typedefinitions.append(klass)
+                if has_keywords(definition):
+                    typedefinitions.extend(define_class_functional(definition))
+                else:
+                    typedefinitions.extend(define_class(definition))
 
             case StructureDefinitionKind.PRIMITIVE:
-                typedefinitions.extend(
-                    make_annotated_node(
-                        replace(definition, type=definition.elements["value"].type),
-                        AnnotationForm.TypeAlias,
-                    )
-                )
+                typedefinitions.extend(define_alias(definition))
 
             case _:
                 logger.warning(

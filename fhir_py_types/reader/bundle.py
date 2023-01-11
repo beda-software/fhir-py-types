@@ -1,5 +1,4 @@
 import json
-import keyword
 import logging
 import os
 
@@ -66,10 +65,6 @@ def parse_element_type(element: dict) -> Optional[List[StructurePropertyType]]:
 
 def parse_element_id(element: dict) -> str:
     element_id: str = element["id"].split(".")[-1]
-    if keyword.iskeyword(element_id):
-        logger.warning(
-            "In parsing '{}' id: '{}' is a keyword".format(element["id"], element_id)
-        )
     # 'Choice of Types' are handled by property type, will not parse suffix
     return element_id.removesuffix("[x]")
 
