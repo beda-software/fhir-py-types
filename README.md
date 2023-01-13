@@ -8,3 +8,5 @@ Basic usage scenario:
 - Generate types by:
     - `poetry run typegen --from-bundles <path to profiles-types.json> --from-bundles <path to profiles-resources.json> --outfile <output path>` from the local environment
     - `docker compose up` in a container (make sure `compose.yaml` `volumes` configuration is up to date)
+- Typecheck the result:
+    - `poetry run mypy <path to the generated file>`
