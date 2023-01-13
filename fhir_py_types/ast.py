@@ -1,12 +1,11 @@
 import ast
-from dataclasses import replace
-from enum import Enum, auto
-import functools
 import itertools
 import keyword
 import logging
 
-from typing import Iterable, List, Literal, Tuple, cast
+from dataclasses import replace
+from enum import Enum, auto
+from typing import Iterable, List, Literal, Tuple
 
 from fhir_py_types import (
     StructureDefinition,
@@ -24,25 +23,10 @@ class AnnotationForm(Enum):
     Dict = auto()
 
 
-def fold_into_union_node(nodes: Iterable[ast.expr]) -> ast.expr:
-    return functools.reduce(
-        lambda acc, n: ast.BinOp(left=acc, right=n, op=ast.BitOr()),
-        nodes,
-    )
-
-
 def make_type_annotation(
     type_: StructurePropertyType, form: AnnotationForm
 ) -> ast.expr:
-    if type_.target_profile:
-        annotation: ast.expr = ast.Subscript(
-            value=ast.Name(type_.code),
-            slice=fold_into_union_node(
-                cast(ast.expr, ast.Name(n)) for n in type_.target_profile
-            ),
-        )
-    else:
-        annotation = ast.Name(type_.code)
+    annotation: ast.expr = ast.Name(type_.code)
 
     if type_.isarray:
         annotation = ast.Subscript(value=ast.Name("List_"), slice=annotation)
