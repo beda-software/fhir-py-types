@@ -32,14 +32,14 @@ class StructurePropertyType:
     code: str
     required: bool
     isarray: bool
-    target_profile: Optional[List[str]]
+    target_profile: Optional[List[str]] = None
 
 
 @dataclass
 class StructureDefinition:
     id: str
     docstring: str
-    type: Optional[List[StructurePropertyType]]
+    type: List[StructurePropertyType]
     elements: dict[str, "StructureDefinition"]
     kind: Optional[
         Literal[
@@ -50,3 +50,7 @@ class StructureDefinition:
             StructureDefinitionKind.RESOURCE,
         ]
     ] = None
+
+
+def is_polymorphic(definition: StructureDefinition):
+    return len(definition.type) > 1

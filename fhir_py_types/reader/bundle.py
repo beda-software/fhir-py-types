@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Tuple
 
 from fhir_py_types import (
     StructureDefinition,
@@ -26,16 +26,8 @@ logger = logging.getLogger(__name__)
 DefinitionsBundle = dict[str, Any]
 
 
-def select_structure_definition_resources(bundle: DefinitionsBundle):
-    return (
-        e["resource"]
-        for e in bundle["entry"]
-        if "resource" in e and e["resource"]["resourceType"] == "StructureDefinition"
-    )
-
-
-def parse_type_identifier(type_: dict[str, str]) -> str:
-    code = type_["code"].split("/")[-1]
+def parse_type_identifier(type_: str) -> str:
+    code = type_.split("/")[-1]
     return FHIR_TO_SYSTEM_TYPE_MAP.get(code, code)
 
 
@@ -46,57 +38,105 @@ def parse_target_profile(target_profile: List[str]) -> List[str]:
     return [profile for _, profile in profiles]
 
 
-def parse_element_type(element: dict) -> Optional[List[StructurePropertyType]]:
-    choice_of_types: Optional[List[dict]] = element.get("type")
+def parse_resource_name(path: str) -> str:
+    uppercamelcase = lambda s: s[:1].upper() + s[1:]
 
-    if choice_of_types is not None:
-        return [
-            StructurePropertyType(
-                code=parse_type_identifier(type_),
-                target_profile=parse_target_profile(type_.get("targetProfile", [])),
-                required=element["min"] != 0,
-                isarray=element["max"] != "1",
-            )
-            for type_ in choice_of_types
-        ]
-    else:
-        return None
+    return "".join(uppercamelcase(p) for p in path.removeprefix("#").split("."))
 
 
-def parse_element_id(element: dict) -> str:
-    element_id: str = element["id"].split(".")[-1]
+def unwrap_schema_type(
+    schema: dict, kind: Optional[StructureDefinitionKind]
+) -> Iterable[Tuple[str, List[str]]]:
+    match kind:
+        case StructureDefinitionKind.COMPLEX | StructureDefinitionKind.RESOURCE:
+            return [(parse_resource_name(schema["base"]["path"]), [])]
+        case _:
+            if "contentReference" in schema:
+                return [(parse_resource_name(schema["contentReference"]), [])]
+            else:
+                return ((t["code"], t.get("targetProfile", [])) for t in schema["type"])
+
+
+def parse_property_type(
+    schema: dict, kind: Optional[StructureDefinitionKind]
+) -> List[StructurePropertyType]:
+    return [
+        StructurePropertyType(
+            code=parse_type_identifier(type_),
+            target_profile=parse_target_profile(target_profile),
+            required=schema["min"] != 0,
+            isarray=schema["max"] != "1",
+        )
+        for type_, target_profile in unwrap_schema_type(schema, kind)
+    ]
+
+
+def parse_property_key(schema: dict) -> str:
+    property_key: str = schema["id"].split(".")[-1]
     # 'Choice of Types' are handled by property type, will not parse suffix
-    return element_id.removesuffix("[x]")
+    return property_key.removesuffix("[x]")
 
 
-def read_structure_definition(definition: dict[str, Any]) -> StructureDefinition:
-    elements = definition["snapshot"]["element"]
-    resource = next((e for e in elements if e["id"] == definition["type"]))
-    elements = (e for e in elements if e["id"] != resource["id"])
+def parse_property_kind(schema: dict):
+    match schema.get("type"):
+        case [{"code": "BackboneElement"}] | [{"code": "Element"}]:
+            return StructureDefinitionKind.COMPLEX
+        case _:
+            return None
 
-    structure_definition = StructureDefinition(
+
+def parse_base_structure_definition(definition: dict[str, Any]) -> StructureDefinition:
+    kind = StructureDefinitionKind.from_str(definition["kind"])
+    schemas = definition["snapshot"]["element"]
+
+    match kind:
+        case StructureDefinitionKind.PRIMITIVE:
+            schema = next(
+                s for s in schemas if s["id"] == definition["type"] + ".value"
+            )
+        case _:
+            schema = next(s for s in schemas if s["id"] == definition["type"])
+
+    return StructureDefinition(
         id=definition["id"],
-        kind=StructureDefinitionKind.from_str(definition["kind"]),
-        docstring=resource["definition"],
-        type=parse_element_type(resource),
+        kind=kind,
+        docstring=schema["definition"],
+        type=parse_property_type(schema, kind),
         elements={},
     )
 
-    for element in sorted(elements, key=lambda e: len(e["path"])):
-        element_id = parse_element_id(element)
-        element_definition = StructureDefinition(
-            id=element_id,
-            docstring=element["definition"],
-            type=parse_element_type(element),
+
+def parse_structure_definition(definition: dict[str, Any]) -> StructureDefinition:
+    structure_definition = parse_base_structure_definition(definition)
+    schemas = (
+        e for e in definition["snapshot"]["element"] if e["id"] != definition["type"]
+    )
+
+    for schema in sorted(schemas, key=lambda s: len(s["path"])):
+        subtree = structure_definition
+        for path_component in schema["path"].split(".")[1:-1]:
+            subtree = subtree.elements[path_component]
+
+        property_key = parse_property_key(schema)
+        property_kind = parse_property_kind(schema)
+
+        subtree.elements[property_key] = StructureDefinition(
+            id=parse_resource_name(schema["id"]),
+            docstring=schema["definition"],
+            type=parse_property_type(schema, property_kind),
+            kind=property_kind,
             elements={},
         )
 
-        in_focus = structure_definition
-        for component in element["path"].split(".")[1:-1]:
-            in_focus = in_focus.elements[component]
-        in_focus.elements[element_id] = element_definition
-
     return structure_definition
+
+
+def select_structure_definition_resources(bundle: DefinitionsBundle):
+    return (
+        e["resource"]
+        for e in bundle["entry"]
+        if "resource" in e and e["resource"]["resourceType"] == "StructureDefinition"
+    )
 
 
 def read_structure_definitions(
@@ -104,7 +144,7 @@ def read_structure_definitions(
 ) -> Iterable[StructureDefinition]:
     raw_definitions = select_structure_definition_resources(bundle)
 
-    return (read_structure_definition(definition) for definition in raw_definitions)
+    return (parse_structure_definition(definition) for definition in raw_definitions)
 
 
 def load_from_bundle(path: str) -> Iterable[StructureDefinition]:

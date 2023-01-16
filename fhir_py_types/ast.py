@@ -11,6 +11,7 @@ from fhir_py_types import (
     StructureDefinition,
     StructureDefinitionKind,
     StructurePropertyType,
+    is_polymorphic,
 )
 
 
@@ -38,50 +39,53 @@ def make_type_annotation(
 
 
 def format_identifier(
-    definition: StructureDefinition, type_: StructurePropertyType
+    definition: StructureDefinition, identifier: str, type_: StructurePropertyType
 ) -> str:
-    polymorphic = len(definition.type or []) > 1
+    uppercamelcase = lambda s: s[:1].upper() + s[1:]
 
-    return definition.id + type_.code.capitalize() if polymorphic else definition.id
+    return (
+        identifier + uppercamelcase(type_.code)
+        if is_polymorphic(definition)
+        else identifier
+    )
 
 
 def zip_identifier_annotation(
-    definition: StructureDefinition, form: AnnotationForm
+    definition: StructureDefinition, identifier: str, form: AnnotationForm
 ) -> Iterable[Tuple[str, ast.expr]]:
     return (
-        [
-            (format_identifier(definition, t), make_type_annotation(t, form))
-            for t in definition.type
-        ]
-        if definition.type
-        else [(definition.id, ast.Name("Any_"))]
+        (format_identifier(definition, identifier, t), make_type_annotation(t, form))
+        for t in definition.type
     )
 
 
 def make_assignment_statement(
-    identifier: str,
+    target: str,
     annotation: ast.expr,
     form: Literal[AnnotationForm.Property, AnnotationForm.TypeAlias],
 ) -> ast.stmt:
     match form:
         case AnnotationForm.Property:
             return ast.AnnAssign(
-                target=ast.Name(identifier), annotation=annotation, simple=1
+                target=ast.Name(target), annotation=annotation, simple=1
             )
         case AnnotationForm.TypeAlias:
-            return ast.Assign(targets=[ast.Name(identifier)], value=annotation)
+            return ast.Assign(targets=[ast.Name(target)], value=annotation)
 
 
 def type_annotate(
     defintion: StructureDefinition,
+    identifier: str,
     form: Literal[AnnotationForm.Property, AnnotationForm.TypeAlias],
 ) -> Iterable[ast.stmt]:
     return itertools.chain.from_iterable(
         [
-            make_assignment_statement(identifier, annotation, form),
+            make_assignment_statement(identifier_, annotation, form),
             ast.Expr(value=ast.Str(defintion.docstring)),
         ]
-        for (identifier, annotation) in zip_identifier_annotation(defintion, form)
+        for (identifier_, annotation) in zip_identifier_annotation(
+            defintion, identifier, form
+        )
     )
 
 
@@ -93,8 +97,8 @@ def define_class(definition: StructureDefinition) -> Iterable[ast.stmt]:
             body=[
                 ast.Expr(value=ast.Str(definition.docstring)),
                 *itertools.chain.from_iterable(
-                    type_annotate(property, AnnotationForm.Property)
-                    for property in definition.elements.values()
+                    type_annotate(property, identifier, AnnotationForm.Property)
+                    for identifier, property in definition.elements.items()
                 ),
             ],
             decorator_list=[],
@@ -110,8 +114,8 @@ def define_class_functional(definition: StructureDefinition) -> Iterable[ast.stm
     """
     properties = list(
         itertools.chain.from_iterable(
-            zip_identifier_annotation(property, AnnotationForm.Dict)
-            for property in definition.elements.values()
+            zip_identifier_annotation(property, identifier, AnnotationForm.Dict)
+            for identifier, property in definition.elements.items()
         )
     )
 
@@ -134,18 +138,38 @@ def define_class_functional(definition: StructureDefinition) -> Iterable[ast.stm
 
 
 def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
-    return type_annotate(
-        replace(definition, type=definition.elements["value"].type),
-        AnnotationForm.TypeAlias,
-    )
+    return type_annotate(definition, definition.id, AnnotationForm.TypeAlias)
 
 
 def has_keywords(definition: StructureDefinition) -> bool:
     return any(
-        keyword.iskeyword(format_identifier(property, t))
-        for property in definition.elements.values()
-        for t in (property.type or [])
+        keyword.iskeyword(format_identifier(property, identifier, t))
+        for identifier, property in definition.elements.items()
+        for t in property.type
     )
+
+
+def select_nested_definitions(
+    definition: StructureDefinition,
+) -> Iterable[StructureDefinition]:
+    return (
+        d
+        for d in definition.elements.values()
+        if d.kind == StructureDefinitionKind.COMPLEX
+    )
+
+
+def iterate_definitions_tree(
+    root: StructureDefinition,
+) -> Iterable[StructureDefinition]:
+    subtree = list(select_nested_definitions(root))
+
+    while subtree:
+        tree_node = subtree.pop()
+        yield tree_node
+        subtree.extend(select_nested_definitions(tree_node))
+
+    yield root
 
 
 def build_ast(
@@ -153,22 +177,23 @@ def build_ast(
 ) -> Iterable[ast.stmt]:
     typedefinitions: List[ast.stmt] = []
 
-    for definition in structure_definitions:
-        match definition.kind:
-            case StructureDefinitionKind.RESOURCE | StructureDefinitionKind.COMPLEX:
-                if has_keywords(definition):
-                    typedefinitions.extend(define_class_functional(definition))
-                else:
-                    typedefinitions.extend(define_class(definition))
+    for root in structure_definitions:
+        for definition in iterate_definitions_tree(root):
+            match definition.kind:
+                case StructureDefinitionKind.RESOURCE | StructureDefinitionKind.COMPLEX:
+                    if has_keywords(definition):
+                        typedefinitions.extend(define_class_functional(definition))
+                    else:
+                        typedefinitions.extend(define_class(definition))
 
-            case StructureDefinitionKind.PRIMITIVE:
-                typedefinitions.extend(define_alias(definition))
+                case StructureDefinitionKind.PRIMITIVE:
+                    typedefinitions.extend(define_alias(definition))
 
-            case _:
-                logger.warning(
-                    "Unsupported definition {} of kind {}, skipping".format(
-                        definition.id, definition.kind
+                case _:
+                    logger.warning(
+                        "Unsupported definition {} of kind {}, skipping".format(
+                            definition.id, definition.kind
+                        )
                     )
-                )
 
     return typedefinitions
