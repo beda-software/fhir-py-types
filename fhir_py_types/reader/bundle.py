@@ -88,20 +88,21 @@ def parse_property_kind(schema: dict):
 def parse_base_structure_definition(definition: dict[str, Any]) -> StructureDefinition:
     kind = StructureDefinitionKind.from_str(definition["kind"])
     schemas = definition["snapshot"]["element"]
+    base_schema = next(s for s in schemas if s["id"] == definition["type"])
 
     match kind:
         case StructureDefinitionKind.PRIMITIVE:
-            schema = next(
+            structure_schema = next(
                 s for s in schemas if s["id"] == definition["type"] + ".value"
             )
         case _:
-            schema = next(s for s in schemas if s["id"] == definition["type"])
+            structure_schema = base_schema
 
     return StructureDefinition(
         id=definition["id"],
         kind=kind,
-        docstring=schema["definition"],
-        type=parse_property_type(schema, kind),
+        docstring=base_schema["definition"],
+        type=parse_property_type(structure_schema, kind),
         elements={},
     )
 
