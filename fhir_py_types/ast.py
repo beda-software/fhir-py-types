@@ -1,11 +1,12 @@
 import ast
+import functools
 import itertools
 import keyword
 import logging
 
 from dataclasses import replace
 from enum import Enum, auto
-from typing import Iterable, List, Literal, Tuple
+from typing import Iterable, List, Literal, Tuple, cast
 
 from fhir_py_types import (
     StructureDefinition,
@@ -89,11 +90,13 @@ def type_annotate(
     )
 
 
-def define_class(definition: StructureDefinition) -> Iterable[ast.stmt]:
+def define_class_object(
+    definition: StructureDefinition, base="TypedDict"
+) -> Iterable[ast.stmt]:
     return [
         ast.ClassDef(
             definition.id,
-            bases=[ast.Name("TypedDict")],
+            bases=[ast.Name(base)],
             body=[
                 ast.Expr(value=ast.Str(definition.docstring)),
                 *itertools.chain.from_iterable(
@@ -107,7 +110,9 @@ def define_class(definition: StructureDefinition) -> Iterable[ast.stmt]:
     ]
 
 
-def define_class_functional(definition: StructureDefinition) -> Iterable[ast.stmt]:
+def define_class_functional(
+    definition: StructureDefinition, base="TypedDict"
+) -> Iterable[ast.stmt]:
     """
     Build TypedDict for StructureDefinition with keyword properties,
     does not include docstrings
@@ -123,7 +128,7 @@ def define_class_functional(definition: StructureDefinition) -> Iterable[ast.stm
         ast.Assign(
             targets=[ast.Name(definition.id)],
             value=ast.Call(
-                func=ast.Name("TypedDict"),
+                func=ast.Name(base),
                 args=[
                     ast.Str(definition.id),
                     ast.Dict(
@@ -137,8 +142,66 @@ def define_class_functional(definition: StructureDefinition) -> Iterable[ast.stm
     ]
 
 
+def define_class(
+    definition: StructureDefinition, base="TypedDict"
+) -> Iterable[ast.stmt]:
+    if has_keywords(definition):
+        return define_class_functional(definition, base=base)
+    else:
+        return define_class_object(definition, base=base)
+
+
 def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
     return type_annotate(definition, definition.id, AnnotationForm.TypeAlias)
+
+
+def define_polymorphic(definition: StructureDefinition) -> Iterable[ast.stmt]:
+    base = replace(
+        definition,
+        id="_" + definition.id + "Base",
+        elements={
+            k: p for k, p in definition.elements.items() if not is_polymorphic(p)
+        },
+    )
+
+    polymorphics = next(
+        [
+            StructureDefinition(
+                id="_" + format_identifier(p, definition.id, t),
+                docstring=p.docstring,
+                type=[
+                    StructurePropertyType(
+                        code=format_identifier(p, definition.id, t),
+                        required=False,
+                        isarray=False,
+                    )
+                ],
+                elements={format_identifier(p, k, t): replace(p, type=[t])},
+                kind=StructureDefinitionKind.COMPLEX,
+            )
+            for t in p.type
+        ]
+        for k, p in definition.elements.items()
+        if is_polymorphic(p)
+    )
+
+    return itertools.chain.from_iterable(
+        [
+            define_class(base),
+            itertools.chain.from_iterable(
+                define_class(p, base=base.id) for p in polymorphics
+            ),
+            [
+                ast.Assign(
+                    targets=[ast.Name(definition.id)],
+                    value=functools.reduce(
+                        lambda acc, n: ast.BinOp(left=acc, right=n, op=ast.BitOr()),
+                        [cast(ast.expr, ast.Name(d.id)) for d in polymorphics],
+                    ),
+                )
+            ],
+        ],
+    )
 
 
 def has_keywords(definition: StructureDefinition) -> bool:
@@ -146,6 +209,13 @@ def has_keywords(definition: StructureDefinition) -> bool:
         keyword.iskeyword(format_identifier(property, identifier, t))
         for identifier, property in definition.elements.items()
         for t in property.type
+    )
+
+
+def has_required_polymorphics(definition: StructureDefinition) -> bool:
+    return any(
+        is_polymorphic(e) and any(t.required for t in e.type)
+        for e in definition.elements.values()
     )
 
 
@@ -181,8 +251,8 @@ def build_ast(
         for definition in iterate_definitions_tree(root):
             match definition.kind:
                 case StructureDefinitionKind.RESOURCE | StructureDefinitionKind.COMPLEX:
-                    if has_keywords(definition):
-                        typedefinitions.extend(define_class_functional(definition))
+                    if has_required_polymorphics(definition):
+                        typedefinitions.extend(define_polymorphic(definition))
                     else:
                         typedefinitions.extend(define_class(definition))
 
