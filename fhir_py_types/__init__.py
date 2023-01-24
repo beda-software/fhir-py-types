@@ -27,7 +27,7 @@ class StructureDefinitionKind(Enum):
                 raise ValueError(f"Unknown StructureDefinition kind: {kind}")
 
 
-@dataclass
+@dataclass(frozen=True)
 class StructurePropertyType:
     code: str
     required: bool
@@ -35,7 +35,7 @@ class StructurePropertyType:
     target_profile: Optional[List[str]] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class StructureDefinition:
     id: str
     docstring: str
