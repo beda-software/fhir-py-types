@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Literal, Optional
+from typing import List, Optional
 
 
 class StructureDefinitionKind(Enum):
@@ -41,15 +41,7 @@ class StructureDefinition:
     docstring: str
     type: List[StructurePropertyType]
     elements: dict[str, "StructureDefinition"]
-    kind: Optional[
-        Literal[
-            StructureDefinitionKind.PRIMITIVE,
-            StructureDefinitionKind.COMPLEX,
-            StructureDefinitionKind.CAPABILITY,
-            StructureDefinitionKind.OPERATION,
-            StructureDefinitionKind.RESOURCE,
-        ]
-    ] = None
+    kind: Optional[StructureDefinitionKind] = None
 
 
 def is_polymorphic(definition: StructureDefinition):
