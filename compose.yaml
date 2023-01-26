@@ -2,5 +2,5 @@ services:
   typegen:
     build: .
     volumes:
-      - ./spec:/app/spec
+      - ./fhir_py_types:/app/fhir_py_types
       - ./generated:/app/generated
