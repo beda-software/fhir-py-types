@@ -1,0 +1,6 @@
+services:
+  typegen:
+    build: .
+    volumes:
+      - ./fhir_py_types:/app/fhir_py_types
+      - ./generated:/app/generated
