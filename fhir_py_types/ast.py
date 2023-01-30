@@ -170,11 +170,7 @@ def define_polymorphic(definition: StructureDefinition) -> Iterable[ast.stmt]:
                 id="_" + format_identifier(p, definition.id, t),
                 docstring=p.docstring,
                 type=[
-                    StructurePropertyType(
-                        code=format_identifier(p, definition.id, t),
-                        required=False,
-                        isarray=False,
-                    )
+                    StructurePropertyType(code=format_identifier(p, definition.id, t))
                 ],
                 elements={format_identifier(p, k, t): replace(p, type=[t])},
                 kind=StructureDefinitionKind.COMPLEX,
