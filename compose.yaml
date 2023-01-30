@@ -3,4 +3,5 @@ services:
     build: .
     volumes:
       - ./fhir_py_types:/app/fhir_py_types
+      - ./spec:/app/spec
       - ./generated:/app/generated
