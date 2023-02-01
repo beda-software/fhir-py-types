@@ -28,7 +28,11 @@ class AnnotationForm(Enum):
 def make_type_annotation(
     type_: StructurePropertyType, form: AnnotationForm
 ) -> ast.expr:
-    annotation: ast.expr = ast.Name(type_.code)
+    match form:
+        case AnnotationForm.TypeAlias:
+            annotation: ast.expr = ast.Name(type_.code)
+        case _:
+            annotation = ast.Str(type_.code)
 
     if type_.isarray:
         annotation = ast.Subscript(value=ast.Name("List_"), slice=annotation)

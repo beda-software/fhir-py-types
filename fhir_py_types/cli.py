@@ -34,10 +34,6 @@ def main() -> None:
     with open(os.path.abspath(args.outfile), "w") as resource_file:
         resource_file.writelines(
             [
-                # Forward declare type hints to resolve possible cycle dependencies.
-                # As defined by PEP563 https://peps.python.org/pep-0563/
-                # https://docs.python.org/3/library/__future__.html#id1
-                "from __future__ import annotations\n\n",
                 "from typing import TypedDict, List as List_, Any as Any_\n",
                 "from typing_extensions import Required as Required_\n",
                 "\n\n",

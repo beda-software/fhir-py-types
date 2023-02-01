@@ -59,7 +59,7 @@ def test_generates_class_for_flat_definition():
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"), slice=ast.Name(id="str")
+                            value=ast.Name(id="Required_"), slice=ast.Str("str")
                         ),
                         simple=1,
                     ),
@@ -109,7 +109,7 @@ def test_generates_function_call_for_keyworded_definition():
                             values=[
                                 ast.Subscript(
                                     value=ast.Name(id="Required_"),
-                                    slice=ast.Name(id="str"),
+                                    slice=ast.Str("str"),
                                 )
                             ],
                         ),
@@ -198,7 +198,7 @@ def test_generates_multiple_classes_for_compound_definition():
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"), slice=ast.Name(id="str")
+                            value=ast.Name(id="Required_"), slice=ast.Str("str")
                         ),
                         simple=1,
                     ),
@@ -218,7 +218,7 @@ def test_generates_multiple_classes_for_compound_definition():
                         target=ast.Name(id="complexproperty"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Required_"),
-                            slice=ast.Name(id="NestedTestResource"),
+                            slice=ast.Str("NestedTestResource"),
                         ),
                         simple=1,
                     ),
@@ -236,26 +236,24 @@ def test_generates_multiple_classes_for_compound_definition():
         (
             False,
             False,
-            ast.Name(id="str"),
+            ast.Str("str"),
         ),
         (
             True,
             False,
-            ast.Subscript(value=ast.Name(id="Required_"), slice=ast.Name(id="str")),
+            ast.Subscript(value=ast.Name(id="Required_"), slice=ast.Str("str")),
         ),
         (
             False,
             True,
-            ast.Subscript(value=ast.Name(id="List_"), slice=ast.Name(id="str")),
+            ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
         ),
         (
             True,
             True,
             ast.Subscript(
                 value=ast.Name(id="Required_"),
-                slice=ast.Subscript(
-                    value=ast.Name(id="List_"), slice=ast.Name(id="str")
-                ),
+                slice=ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
             ),
         ),
     ],
@@ -357,7 +355,7 @@ def test_unrolls_required_polymorphic_into_class_uion():
                     ast.AnnAssign(
                         target=ast.Name(id="monotype"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"), slice=ast.Name(id="boolean")
+                            value=ast.Name(id="Required_"), slice=ast.Str("boolean")
                         ),
                         simple=1,
                     ),
@@ -376,7 +374,7 @@ def test_unrolls_required_polymorphic_into_class_uion():
                     ast.AnnAssign(
                         target=ast.Name(id="valueBoolean"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"), slice=ast.Name(id="boolean")
+                            value=ast.Name(id="Required_"), slice=ast.Str("boolean")
                         ),
                         simple=1,
                     ),
@@ -397,8 +395,7 @@ def test_unrolls_required_polymorphic_into_class_uion():
                     ast.AnnAssign(
                         target=ast.Name(id="valueQuantity"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"),
-                            slice=ast.Name(id="Quantity"),
+                            value=ast.Name(id="Required_"), slice=ast.Str("Quantity")
                         ),
                         simple=1,
                     ),
