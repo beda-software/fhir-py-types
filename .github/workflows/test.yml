@@ -1,4 +1,4 @@
-name: fhir-py-types
+name: Test
 
 on:
   push:
