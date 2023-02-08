@@ -13,6 +13,8 @@ cd ..
 docker compose up
 ```
 
+The generated type definitions can then be found in `generated/resources.py`.
+
 ## How it works
 
 The build process is based on the standard `StructureDefintion` resource (available [in JSON format](https://hl7.org/fhir/downloads.html) from the FHIR download page, [direct link](https://hl7.org/fhir/definitions.json.zip) at the time of writing).
