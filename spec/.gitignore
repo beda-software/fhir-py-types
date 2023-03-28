@@ -1,4 +1,6 @@
 *
 !.gitignore
 !bundle.checksumfile
+!r4.bundle.checksumfile
+!r5.bundle.checksumfile
 !download_spec_bundle.sh
