@@ -34,6 +34,9 @@ def make_type_annotation(
         case _:
             annotation = ast.Str(type_.code)
 
+    if type_.literal:
+        annotation = ast.Subscript(value=ast.Name("Literal_"), slice=annotation)
+
     if type_.isarray:
         annotation = ast.Subscript(value=ast.Name("List_"), slice=annotation)
 
@@ -62,6 +65,8 @@ def make_default_initializer(identifier: str, type_: StructurePropertyType):
     else:
         if not type_.required:
             default = ast.Constant(None)
+        elif type_.literal and not type_.isarray:
+            default = ast.Str(type_.code)
 
     return default
 

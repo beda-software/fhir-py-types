@@ -185,9 +185,10 @@ def test_generates_multiple_classes_for_compound_definition():
 
 
 @pytest.mark.parametrize(
-    "required, isarray, expected_annotation",
+    "required, isarray, literal, expected_annotation",
     [
         (
+            False,
             False,
             False,
             ast.Subscript(value=ast.Name(id="Optional_"), slice=ast.Str("str")),
@@ -195,11 +196,13 @@ def test_generates_multiple_classes_for_compound_definition():
         (
             True,
             False,
+            False,
             ast.Str("str"),
         ),
         (
             False,
             True,
+            False,
             ast.Subscript(
                 value=ast.Name(id="Optional_"),
                 slice=ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
@@ -208,12 +211,30 @@ def test_generates_multiple_classes_for_compound_definition():
         (
             True,
             True,
+            False,
             ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
+        ),
+        (
+            True,
+            False,
+            True,
+            ast.Subscript(value=ast.Name(id="Literal_"), slice=ast.Str("str")),
+        ),
+        (
+            False,
+            False,
+            True,
+            ast.Subscript(
+                value=ast.Name(id="Optional_"),
+                slice=ast.Subscript(
+                    value=ast.Name(id="Literal_"), slice=ast.Str("str")
+                ),
+            ),
         ),
     ],
 )
 def test_generates_annotations_according_to_structure_type(
-    required, isarray, expected_annotation
+    required, isarray, literal, expected_annotation
 ):
     assert_eq(
         [
@@ -231,7 +252,10 @@ def test_generates_annotations_according_to_structure_type(
                         docstring="test resource property 1",
                         type=[
                             StructurePropertyType(
-                                code="str", required=required, isarray=isarray
+                                code="str",
+                                required=required,
+                                isarray=isarray,
+                                literal=literal,
                             )
                         ],
                         elements={},
@@ -251,7 +275,11 @@ def test_generates_annotations_according_to_structure_type(
                         target=ast.Name(id="property1"),
                         annotation=expected_annotation,
                         simple=1,
-                        value=ast.Constant(None) if not required else None,
+                        value=ast.Constant(None)
+                        if not required
+                        else ast.Str("str")
+                        if literal
+                        else None,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],

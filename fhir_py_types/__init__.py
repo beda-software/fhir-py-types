@@ -32,6 +32,7 @@ class StructurePropertyType:
     code: str
     required: bool = False
     isarray: bool = False
+    literal: bool = False
     target_profile: Optional[List[str]] = None
 
 
