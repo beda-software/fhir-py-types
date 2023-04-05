@@ -49,8 +49,15 @@ def make_default_initializer(identifier: str, type_: StructurePropertyType):
     if keyword.iskeyword(identifier):
         default = ast.Call(
             ast.Name("Field"),
-            args=[ast.Constant(None)] if not type_.required else [],
-            keywords=[ast.keyword(arg="alias", value=ast.Constant(identifier))],
+            args=[],
+            keywords=[
+                *(
+                    [ast.keyword(arg="default", value=ast.Constant(None))]
+                    if not type_.required
+                    else []
+                ),
+                ast.keyword(arg="alias", value=ast.Constant(identifier)),
+            ],
         )
     else:
         if not type_.required:
