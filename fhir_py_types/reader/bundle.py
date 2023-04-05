@@ -98,12 +98,29 @@ def parse_base_structure_definition(definition: dict[str, Any]) -> StructureDefi
         case _:
             structure_schema = base_schema
 
+    match kind:
+        case StructureDefinitionKind.RESOURCE:
+            default_elements = {
+                "resourceType": StructureDefinition(
+                    id=definition["type"],
+                    docstring=base_schema["short"],
+                    type=[
+                        StructurePropertyType(
+                            code=definition["type"], required=True, literal=True
+                        )
+                    ],
+                    elements={},
+                )
+            }
+        case _:
+            default_elements = {}
+
     return StructureDefinition(
         id=definition["id"],
         kind=kind,
         docstring=base_schema["definition"],
         type=parse_property_type(structure_schema, kind),
-        elements={},
+        elements=default_elements,
     )
 
 
