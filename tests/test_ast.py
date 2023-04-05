@@ -11,6 +11,14 @@ from fhir_py_types import (
 )
 from fhir_py_types.ast import build_ast
 
+EXPECTED_BASE_MODEL_CONFIG = [
+    ast.keyword(
+        arg="extra",
+        value=ast.Attribute(value=ast.Name("Extra"), attr="forbid"),
+    ),
+    ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
+]
+
 
 def assert_eq(definitions: Sequence[StructureDefinition], ast_tree: Sequence[ast.stmt]):
     generated = [ast.dump(t) for t in build_ast(definitions)]
@@ -52,71 +60,19 @@ def test_generates_class_for_flat_definition():
         [
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id="TypedDict")],
-                keywords=[ast.keyword(arg="total", value=ast.Name(id="False"))],
+                bases=[ast.Name(id="BaseModel")],
+                keywords=EXPECTED_BASE_MODEL_CONFIG,
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
-                        annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"), slice=ast.Str("str")
-                        ),
+                        annotation=ast.Str("str"),
                         simple=1,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
                 decorator_list=[],
             )
-        ],
-    )
-
-
-def test_generates_function_call_for_keyworded_definition():
-    assert_eq(
-        [
-            StructureDefinition(
-                id="TestResource",
-                docstring="test resource description",
-                type=[
-                    StructurePropertyType(
-                        code="TestResource", required=True, isarray=False
-                    )
-                ],
-                elements={
-                    "class": StructureDefinition(
-                        id="class",
-                        docstring="test resource property 1",
-                        type=[
-                            StructurePropertyType(
-                                code="str", required=True, isarray=False
-                            )
-                        ],
-                        elements={},
-                    )
-                },
-                kind=StructureDefinitionKind.RESOURCE,
-            )
-        ],
-        [
-            ast.Assign(
-                targets=[ast.Name("TestResource")],
-                value=ast.Call(
-                    func=ast.Name("TypedDict"),
-                    args=[
-                        ast.Str("TestResource"),
-                        ast.Dict(
-                            keys=[ast.Str("class")],
-                            values=[
-                                ast.Subscript(
-                                    value=ast.Name(id="Required_"),
-                                    slice=ast.Str("str"),
-                                )
-                            ],
-                        ),
-                    ],
-                    keywords=[ast.keyword(arg="total", value=ast.Name("False"))],
-                ),
-            ),
         ],
     )
 
@@ -176,7 +132,7 @@ def test_generates_multiple_classes_for_compound_definition():
                                 docstring="nested test resource property 1",
                                 type=[
                                     StructurePropertyType(
-                                        code="str", required=True, isarray=False
+                                        code="str", required=False, isarray=False
                                     )
                                 ],
                                 elements={},
@@ -191,16 +147,17 @@ def test_generates_multiple_classes_for_compound_definition():
         [
             ast.ClassDef(
                 name="NestedTestResource",
-                bases=[ast.Name(id="TypedDict")],
-                keywords=[ast.keyword(arg="total", value=ast.Name(id="False"))],
+                bases=[ast.Name(id="BaseModel")],
+                keywords=EXPECTED_BASE_MODEL_CONFIG,
                 body=[
                     ast.Expr(value=ast.Constant(value="nested resource definition")),
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"), slice=ast.Str("str")
+                            value=ast.Name(id="Optional_"), slice=ast.Str("str")
                         ),
                         simple=1,
+                        value=ast.Constant(None),
                     ),
                     ast.Expr(
                         value=ast.Constant(value="nested test resource property 1")
@@ -210,16 +167,13 @@ def test_generates_multiple_classes_for_compound_definition():
             ),
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id="TypedDict")],
-                keywords=[ast.keyword(arg="total", value=ast.Name(id="False"))],
+                bases=[ast.Name(id="BaseModel")],
+                keywords=EXPECTED_BASE_MODEL_CONFIG,
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
                         target=ast.Name(id="complexproperty"),
-                        annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"),
-                            slice=ast.Str("NestedTestResource"),
-                        ),
+                        annotation=ast.Str("NestedTestResource"),
                         simple=1,
                     ),
                     ast.Expr(value=ast.Constant(value="nested resource definition")),
@@ -236,25 +190,25 @@ def test_generates_multiple_classes_for_compound_definition():
         (
             False,
             False,
+            ast.Subscript(value=ast.Name(id="Optional_"), slice=ast.Str("str")),
+        ),
+        (
+            True,
+            False,
             ast.Str("str"),
         ),
         (
-            True,
             False,
-            ast.Subscript(value=ast.Name(id="Required_"), slice=ast.Str("str")),
-        ),
-        (
-            False,
-            True,
-            ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
-        ),
-        (
-            True,
             True,
             ast.Subscript(
-                value=ast.Name(id="Required_"),
+                value=ast.Name(id="Optional_"),
                 slice=ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
             ),
+        ),
+        (
+            True,
+            True,
+            ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
         ),
     ],
 )
@@ -289,14 +243,15 @@ def test_generates_annotations_according_to_structure_type(
         [
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id="TypedDict")],
-                keywords=[ast.keyword(arg="total", value=ast.Name(id="False"))],
+                bases=[ast.Name(id="BaseModel")],
+                keywords=EXPECTED_BASE_MODEL_CONFIG,
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
                         annotation=expected_annotation,
                         simple=1,
+                        value=ast.Constant(None) if not required else None,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
@@ -323,7 +278,7 @@ def test_unrolls_required_polymorphic_into_class_uion():
                         docstring="monotype property definition",
                         type=[
                             StructurePropertyType(
-                                code="boolean", required=True, isarray=False
+                                code="boolean", required=False, isarray=False
                             ),
                         ],
                         elements={},
@@ -348,16 +303,17 @@ def test_unrolls_required_polymorphic_into_class_uion():
         [
             ast.ClassDef(
                 name="_TestResourceBase",
-                bases=[ast.Name(id="TypedDict")],
-                keywords=[ast.keyword(arg="total", value=ast.Name(id="False"))],
+                bases=[ast.Name(id="BaseModel")],
+                keywords=EXPECTED_BASE_MODEL_CONFIG,
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
                         target=ast.Name(id="monotype"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"), slice=ast.Str("boolean")
+                            value=ast.Name(id="Optional_"), slice=ast.Str("boolean")
                         ),
                         simple=1,
+                        value=ast.Constant(None),
                     ),
                     ast.Expr(value=ast.Constant(value="monotype property definition")),
                 ],
@@ -366,16 +322,14 @@ def test_unrolls_required_polymorphic_into_class_uion():
             ast.ClassDef(
                 name="_TestResourceBoolean",
                 bases=[ast.Name(id="_TestResourceBase")],
-                keywords=[ast.keyword(arg="total", value=ast.Name(id="False"))],
+                keywords=[],
                 body=[
                     ast.Expr(
                         value=ast.Constant(value="polymorphic property definition")
                     ),
                     ast.AnnAssign(
                         target=ast.Name(id="valueBoolean"),
-                        annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"), slice=ast.Str("boolean")
-                        ),
+                        annotation=ast.Str("boolean"),
                         simple=1,
                     ),
                     ast.Expr(
@@ -387,16 +341,14 @@ def test_unrolls_required_polymorphic_into_class_uion():
             ast.ClassDef(
                 name="_TestResourceQuantity",
                 bases=[ast.Name(id="_TestResourceBase")],
-                keywords=[ast.keyword(arg="total", value=ast.Name(id="False"))],
+                keywords=[],
                 body=[
                     ast.Expr(
                         value=ast.Constant(value="polymorphic property definition")
                     ),
                     ast.AnnAssign(
                         target=ast.Name(id="valueQuantity"),
-                        annotation=ast.Subscript(
-                            value=ast.Name(id="Required_"), slice=ast.Str("Quantity")
-                        ),
+                        annotation=ast.Str("Quantity"),
                         simple=1,
                     ),
                     ast.Expr(

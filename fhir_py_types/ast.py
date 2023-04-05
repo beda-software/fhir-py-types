@@ -37,10 +37,26 @@ def make_type_annotation(
     if type_.isarray:
         annotation = ast.Subscript(value=ast.Name("List_"), slice=annotation)
 
-    if type_.required and form != AnnotationForm.TypeAlias:
-        annotation = ast.Subscript(value=ast.Name("Required_"), slice=annotation)
+    if not type_.required and form != AnnotationForm.TypeAlias:
+        annotation = ast.Subscript(value=ast.Name("Optional_"), slice=annotation)
 
     return annotation
+
+
+def make_default_initializer(identifier: str, type_: StructurePropertyType):
+    default: ast.expr | None = None
+
+    if keyword.iskeyword(identifier):
+        default = ast.Call(
+            ast.Name("Field"),
+            args=[ast.Constant(None)] if not type_.required else [],
+            keywords=[ast.keyword(arg="alias", value=ast.Constant(identifier))],
+        )
+    else:
+        if not type_.required:
+            default = ast.Constant(None)
+
+    return default
 
 
 def format_identifier(
@@ -55,24 +71,22 @@ def format_identifier(
     )
 
 
-def zip_identifier_annotation(
-    definition: StructureDefinition, identifier: str, form: AnnotationForm
-) -> Iterable[Tuple[str, ast.expr]]:
-    return (
-        (format_identifier(definition, identifier, t), make_type_annotation(t, form))
-        for t in definition.type
-    )
+def zip_identifier_type(
+    definition: StructureDefinition, identifier: str
+) -> Iterable[Tuple[str, StructurePropertyType]]:
+    return ((format_identifier(definition, identifier, t), t) for t in definition.type)
 
 
 def make_assignment_statement(
     target: str,
     annotation: ast.expr,
     form: Literal[AnnotationForm.Property, AnnotationForm.TypeAlias],
+    default: ast.expr | None = None,
 ) -> ast.stmt:
     match form:
         case AnnotationForm.Property:
             return ast.AnnAssign(
-                target=ast.Name(target), annotation=annotation, simple=1
+                target=ast.Name(target), annotation=annotation, simple=1, value=default
             )
         case AnnotationForm.TypeAlias:
             return ast.Assign(targets=[ast.Name(target)], value=annotation)
@@ -85,18 +99,45 @@ def type_annotate(
 ) -> Iterable[ast.stmt]:
     return itertools.chain.from_iterable(
         [
-            make_assignment_statement(identifier_, annotation, form),
+            make_assignment_statement(
+                identifier_ + "_" if keyword.iskeyword(identifier_) else identifier_,
+                make_type_annotation(type_, form),
+                form,
+                default=make_default_initializer(identifier_, type_),
+            ),
             ast.Expr(value=ast.Str(defintion.docstring)),
         ]
-        for (identifier_, annotation) in zip_identifier_annotation(
-            defintion, identifier, form
-        )
+        for (identifier_, type_) in zip_identifier_type(defintion, identifier)
+    )
+
+
+def order_type_overriding_properties(
+    properties_definition: dict[str, StructureDefinition]
+) -> Iterable[Tuple[str, StructureDefinition]]:
+    property_types = {
+        t.code for definition in properties_definition.values() for t in definition.type
+    }
+    return sorted(
+        properties_definition.items(),
+        key=lambda definition: 1 if definition[0] in property_types else -1,
     )
 
 
 def define_class_object(
-    definition: StructureDefinition, base="TypedDict"
+    definition: StructureDefinition, base="BaseModel"
 ) -> Iterable[ast.stmt]:
+    match base:
+        case "BaseModel":
+            base_class_kwargs: Iterable[ast.keyword] = [
+                ast.keyword(
+                    arg="extra",
+                    value=ast.Attribute(value=ast.Name("Extra"), attr="forbid"),
+                ),
+                ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
+            ]
+        case _:
+            base_class_kwargs = []
+
     return [
         ast.ClassDef(
             definition.id,
@@ -105,54 +146,21 @@ def define_class_object(
                 ast.Expr(value=ast.Str(definition.docstring)),
                 *itertools.chain.from_iterable(
                     type_annotate(property, identifier, AnnotationForm.Property)
-                    for identifier, property in definition.elements.items()
+                    for identifier, property in order_type_overriding_properties(
+                        definition.elements
+                    )
                 ),
             ],
             decorator_list=[],
-            keywords=[ast.keyword(arg="total", value=ast.Name("False"))],
-        )
-    ]
-
-
-def define_class_functional(
-    definition: StructureDefinition, base="TypedDict"
-) -> Iterable[ast.stmt]:
-    """
-    Build TypedDict for StructureDefinition with keyword properties,
-    does not include docstrings
-    """
-    properties = list(
-        itertools.chain.from_iterable(
-            zip_identifier_annotation(property, identifier, AnnotationForm.Dict)
-            for identifier, property in definition.elements.items()
-        )
-    )
-
-    return [
-        ast.Assign(
-            targets=[ast.Name(definition.id)],
-            value=ast.Call(
-                func=ast.Name(base),
-                args=[
-                    ast.Str(definition.id),
-                    ast.Dict(
-                        keys=[ast.Str(identifier) for identifier, _ in properties],
-                        values=[annotation for _, annotation in properties],
-                    ),
-                ],
-                keywords=[ast.keyword(arg="total", value=ast.Name("False"))],
-            ),
+            keywords=base_class_kwargs,
         )
     ]
 
 
 def define_class(
-    definition: StructureDefinition, base="TypedDict"
+    definition: StructureDefinition, base="BaseModel"
 ) -> Iterable[ast.stmt]:
-    if has_keywords(definition):
-        return define_class_functional(definition, base=base)
-    else:
-        return define_class_object(definition, base=base)
+    return define_class_object(definition, base=base)
 
 
 def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
@@ -201,14 +209,6 @@ def define_polymorphic(definition: StructureDefinition) -> Iterable[ast.stmt]:
                 )
             ],
         ],
-    )
-
-
-def has_keywords(definition: StructureDefinition) -> bool:
-    return any(
-        keyword.iskeyword(format_identifier(property, identifier, t))
-        for identifier, property in definition.elements.items()
-        for t in property.type
     )
 
 

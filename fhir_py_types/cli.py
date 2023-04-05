@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     argparser = argparse.ArgumentParser(
-        description="Generate Python types from FHIR resources definition"
+        description="Generate Python typed data models from FHIR resources definition"
     )
     argparser.add_argument(
         "--from-bundles",
@@ -23,7 +23,9 @@ def main() -> None:
         help="File path to read 'StructureDefinition' resources from (repeat to read multiple files)",
     )
     argparser.add_argument(
-        "--outfile", required=True, help="File path to write generated Python types to"
+        "--outfile",
+        required=True,
+        help="File path to write generated Python typed data models to",
     )
     args = argparser.parse_args()
 
@@ -34,8 +36,9 @@ def main() -> None:
     with open(os.path.abspath(args.outfile), "w") as resource_file:
         resource_file.writelines(
             [
-                "from typing import TypedDict, List as List_, Any as Any_\n",
-                "from typing_extensions import Required as Required_\n",
+                "from typing import List as List_, Optional as Optional_\n",
+                "from datetime import time, date, datetime\n",
+                "from pydantic import BaseModel, Field, Extra\n",
                 "\n\n",
                 "\n\n\n".join(
                     ast.unparse(ast.fix_missing_locations(tree)) for tree in ast_

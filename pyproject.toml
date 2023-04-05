@@ -1,18 +1,17 @@
 [tool.poetry]
 name = "fhir-py-types"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["beda.software <info@beda.software>"]
 packages = [{include = "fhir_py_types"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
+pydantic = "^1.10.7"
 
 [tool.poetry.group.dev.dependencies]
 black = {version = "^23.1a1", allow-prereleases = true}
 pytest = "^7.2.1"
-
-
 
 [tool.poetry.group.typecheckers.dependencies]
 mypy = "^1.0.0"

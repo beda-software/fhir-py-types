@@ -13,9 +13,9 @@ from fhir_py_types import (
 FHIR_TO_SYSTEM_TYPE_MAP = {
     "System.String": "str",
     "System.Boolean": "bool",
-    "System.Time": "str",
-    "System.Date": "str",
-    "System.DateTime": "str",
+    "System.Time": "time",
+    "System.Date": "date",
+    "System.DateTime": "datetime",
     "System.Decimal": "int",
     "System.Integer": "int",
 }
