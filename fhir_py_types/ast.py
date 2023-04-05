@@ -137,7 +137,7 @@ def order_type_overriding_properties(
 
 def define_class_object(
     definition: StructureDefinition, base="BaseModel"
-) -> Iterable[ast.stmt]:
+) -> Iterable[ast.stmt | ast.expr]:
     match base:
         case "BaseModel":
             base_class_kwargs: Iterable[ast.keyword] = [
@@ -147,8 +147,18 @@ def define_class_object(
                 ),
                 ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
             ]
+            postprocessing = [
+                ast.Call(
+                    ast.Attribute(
+                        value=ast.Name(definition.id), attr="update_forward_refs"
+                    ),
+                    args=[],
+                    keywords=[],
+                )
+            ]
         case _:
             base_class_kwargs = []
+            postprocessing = []
 
     return [
         ast.ClassDef(
@@ -165,13 +175,14 @@ def define_class_object(
             ],
             decorator_list=[],
             keywords=base_class_kwargs,
-        )
+        ),
+        *postprocessing,
     ]
 
 
 def define_class(
     definition: StructureDefinition, base="BaseModel"
-) -> Iterable[ast.stmt]:
+) -> Iterable[ast.stmt | ast.expr]:
     return define_class_object(definition, base=base)
 
 
@@ -179,7 +190,9 @@ def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
     return type_annotate(definition, definition.id, AnnotationForm.TypeAlias)
 
 
-def define_polymorphic(definition: StructureDefinition) -> Iterable[ast.stmt]:
+def define_polymorphic(
+    definition: StructureDefinition,
+) -> Iterable[ast.stmt | ast.expr]:
     base = replace(
         definition,
         id="_" + definition.id + "Base",
@@ -256,8 +269,8 @@ def iterate_definitions_tree(
 
 def build_ast(
     structure_definitions: Iterable[StructureDefinition],
-) -> Iterable[ast.stmt]:
-    typedefinitions: List[ast.stmt] = []
+) -> Iterable[ast.stmt | ast.expr]:
+    typedefinitions: List[ast.stmt | ast.expr] = []
 
     for root in structure_definitions:
         for definition in iterate_definitions_tree(root):
@@ -278,4 +291,8 @@ def build_ast(
                         )
                     )
 
-    return typedefinitions
+    return sorted(
+        typedefinitions,
+        # Defer any postprocessing until after the structure tree is defined.
+        key=lambda definition: 1 if isinstance(definition, ast.Call) else 0,
+    )

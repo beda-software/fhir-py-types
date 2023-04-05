@@ -72,7 +72,14 @@ def test_generates_class_for_flat_definition():
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
                 decorator_list=[],
-            )
+            ),
+            ast.Call(
+                ast.Attribute(
+                    value=ast.Name("TestResource"), attr="update_forward_refs"
+                ),
+                args=[],
+                keywords=[],
+            ),
         ],
     )
 
@@ -180,6 +187,20 @@ def test_generates_multiple_classes_for_compound_definition():
                 ],
                 decorator_list=[],
             ),
+            ast.Call(
+                ast.Attribute(
+                    value=ast.Name("NestedTestResource"), attr="update_forward_refs"
+                ),
+                args=[],
+                keywords=[],
+            ),
+            ast.Call(
+                ast.Attribute(
+                    value=ast.Name("TestResource"), attr="update_forward_refs"
+                ),
+                args=[],
+                keywords=[],
+            ),
         ],
     )
 
@@ -284,7 +305,14 @@ def test_generates_annotations_according_to_structure_type(
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
                 decorator_list=[],
-            )
+            ),
+            ast.Call(
+                ast.Attribute(
+                    value=ast.Name("TestResource"), attr="update_forward_refs"
+                ),
+                args=[],
+                keywords=[],
+            ),
         ],
     )
 
@@ -392,6 +420,13 @@ def test_unrolls_required_polymorphic_into_class_uion():
                     right=ast.Name("_TestResourceQuantity"),
                     op=ast.BitOr(),
                 ),
+            ),
+            ast.Call(
+                ast.Attribute(
+                    value=ast.Name("_TestResourceBase"), attr="update_forward_refs"
+                ),
+                args=[],
+                keywords=[],
             ),
         ],
     )
