@@ -83,10 +83,25 @@ def format_identifier(
     )
 
 
+def remap_type(type_: StructurePropertyType):
+    if not type_.literal:
+        match type_.code:
+            case "Resource":
+                # Different contexts use 'Resource' type to refer to any
+                # resource differentiated by its 'resourceType' (tagged union).
+                # 'AnyResource' is not defined by the spec but rather
+                # generated as a union of all defined resource types.
+                type_ = replace(type_, code="AnyResource")
+    return type_
+
+
 def zip_identifier_type(
     definition: StructureDefinition, identifier: str
 ) -> Iterable[Tuple[str, StructurePropertyType]]:
-    return ((format_identifier(definition, identifier, t), t) for t in definition.type)
+    return (
+        (format_identifier(definition, identifier, t), t)
+        for t in [remap_type(t) for t in definition.type]
+    )
 
 
 def make_assignment_statement(
@@ -237,6 +252,47 @@ def define_polymorphic(
     )
 
 
+def define_tagged_union(
+    name: str, components: Iterable[StructureDefinition], distinct_by: str
+) -> ast.stmt:
+    annotation = functools.reduce(
+        lambda acc, n: ast.BinOp(left=acc, right=n, op=ast.BitOr()),
+        (cast(ast.expr, ast.Name(d.id)) for d in components),
+    )
+
+    return ast.Assign(
+        targets=[ast.Name(name)],
+        value=ast.Subscript(
+            value=ast.Name("Annotated_"),
+            slice=ast.Tuple(
+                elts=[
+                    annotation,
+                    ast.Call(
+                        ast.Name("Field"),
+                        args=[ast.Constant(...)],
+                        keywords=[
+                            ast.keyword(
+                                arg="discriminator", value=ast.Constant(distinct_by)
+                            ),
+                        ],
+                    ),
+                ]
+            ),
+        ),
+    )
+
+
+def select_tagged_resources(
+    definitions: Iterable[StructureDefinition], key: str
+) -> Iterable[StructureDefinition]:
+    return (
+        definition
+        for definition in definitions
+        if definition.kind == StructureDefinitionKind.RESOURCE
+        and key in definition.elements
+    )
+
+
 def has_required_polymorphics(definition: StructureDefinition) -> bool:
     return any(
         is_polymorphic(e) and any(t.required for t in e.type)
@@ -270,6 +326,7 @@ def iterate_definitions_tree(
 def build_ast(
     structure_definitions: Iterable[StructureDefinition],
 ) -> Iterable[ast.stmt | ast.expr]:
+    structure_definitions = list(structure_definitions)
     typedefinitions: List[ast.stmt | ast.expr] = []
 
     for root in structure_definitions:
@@ -290,6 +347,14 @@ def build_ast(
                             definition.id, definition.kind
                         )
                     )
+
+    resources = list(select_tagged_resources(structure_definitions, key="resourceType"))
+    if resources:
+        typedefinitions.append(
+            define_tagged_union(
+                name="AnyResource", components=resources, distinct_by="resourceType"
+            )
+        )
 
     return sorted(
         typedefinitions,

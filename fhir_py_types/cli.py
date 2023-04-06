@@ -36,7 +36,7 @@ def main() -> None:
     with open(os.path.abspath(args.outfile), "w") as resource_file:
         resource_file.writelines(
             [
-                "from typing import List as List_, Optional as Optional_, Literal as Literal_\n",
+                "from typing import List as List_, Optional as Optional_, Literal as Literal_, Annotated as Annotated_\n",
                 "from datetime import time, date, datetime\n",
                 "from pydantic import BaseModel, Field, Extra\n",
                 "\n\n",
