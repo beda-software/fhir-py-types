@@ -428,5 +428,19 @@ def test_unrolls_required_polymorphic_into_class_uion():
                 args=[],
                 keywords=[],
             ),
+            ast.Call(
+                ast.Attribute(
+                    value=ast.Name("_TestResourceBoolean"), attr="update_forward_refs"
+                ),
+                args=[],
+                keywords=[],
+            ),
+            ast.Call(
+                ast.Attribute(
+                    value=ast.Name("_TestResourceQuantity"), attr="update_forward_refs"
+                ),
+                args=[],
+                keywords=[],
+            ),
         ],
     )
