@@ -162,18 +162,8 @@ def define_class_object(
                 ),
                 ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
             ]
-            postprocessing = [
-                ast.Call(
-                    ast.Attribute(
-                        value=ast.Name(definition.id), attr="update_forward_refs"
-                    ),
-                    args=[],
-                    keywords=[],
-                )
-            ]
         case _:
             base_class_kwargs = []
-            postprocessing = []
 
     return [
         ast.ClassDef(
@@ -191,7 +181,11 @@ def define_class_object(
             decorator_list=[],
             keywords=base_class_kwargs,
         ),
-        *postprocessing,
+        ast.Call(
+            ast.Attribute(value=ast.Name(definition.id), attr="update_forward_refs"),
+            args=[],
+            keywords=[],
+        ),
     ]
 
 
