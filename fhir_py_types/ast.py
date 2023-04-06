@@ -83,7 +83,7 @@ def format_identifier(
     )
 
 
-def remap_type(type_: StructurePropertyType):
+def remap_type(definition: StructureDefinition, type_: StructurePropertyType):
     if not type_.literal:
         match type_.code:
             case "Resource":
@@ -92,6 +92,15 @@ def remap_type(type_: StructurePropertyType):
                 # 'AnyResource' is not defined by the spec but rather
                 # generated as a union of all defined resource types.
                 type_ = replace(type_, code="AnyResource")
+
+    if is_polymorphic(definition):
+        # Required polymorphic types are not yet supported.
+        # Making multiple polymorphic properties required means
+        # no valid resource model can be generated (due to required conflicts).
+        # Future implementation might include optional properties
+        # with a custom validator that will enforce single required property rule.
+        type_ = replace(type_, required=False)
+
     return type_
 
 
@@ -100,7 +109,7 @@ def zip_identifier_type(
 ) -> Iterable[Tuple[str, StructurePropertyType]]:
     return (
         (format_identifier(definition, identifier, t), t)
-        for t in [remap_type(t) for t in definition.type]
+        for t in [remap_type(definition, t) for t in definition.type]
     )
 
 
@@ -199,53 +208,6 @@ def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
     return type_annotate(definition, definition.id, AnnotationForm.TypeAlias)
 
 
-def define_polymorphic(
-    definition: StructureDefinition,
-) -> Iterable[ast.stmt | ast.expr]:
-    base = replace(
-        definition,
-        id="_" + definition.id + "Base",
-        elements={
-            k: p for k, p in definition.elements.items() if not is_polymorphic(p)
-        },
-    )
-
-    polymorphics = next(
-        [
-            StructureDefinition(
-                id="_" + format_identifier(p, definition.id, t),
-                docstring=p.docstring,
-                type=[
-                    StructurePropertyType(code=format_identifier(p, definition.id, t))
-                ],
-                elements={format_identifier(p, k, t): replace(p, type=[t])},
-                kind=StructureDefinitionKind.COMPLEX,
-            )
-            for t in p.type
-        ]
-        for k, p in definition.elements.items()
-        if is_polymorphic(p)
-    )
-
-    return itertools.chain.from_iterable(
-        [
-            define_class(base),
-            itertools.chain.from_iterable(
-                define_class(p, base=base.id) for p in polymorphics
-            ),
-            [
-                ast.Assign(
-                    targets=[ast.Name(definition.id)],
-                    value=functools.reduce(
-                        lambda acc, n: ast.BinOp(left=acc, right=n, op=ast.BitOr()),
-                        [cast(ast.expr, ast.Name(d.id)) for d in polymorphics],
-                    ),
-                )
-            ],
-        ],
-    )
-
-
 def define_tagged_union(
     name: str, components: Iterable[StructureDefinition], distinct_by: str
 ) -> ast.stmt:
@@ -287,13 +249,6 @@ def select_tagged_resources(
     )
 
 
-def has_required_polymorphics(definition: StructureDefinition) -> bool:
-    return any(
-        is_polymorphic(e) and any(t.required for t in e.type)
-        for e in definition.elements.values()
-    )
-
-
 def select_nested_definitions(
     definition: StructureDefinition,
 ) -> Iterable[StructureDefinition]:
@@ -327,10 +282,7 @@ def build_ast(
         for definition in iterate_definitions_tree(root):
             match definition.kind:
                 case StructureDefinitionKind.RESOURCE | StructureDefinitionKind.COMPLEX:
-                    if has_required_polymorphics(definition):
-                        typedefinitions.extend(define_polymorphic(definition))
-                    else:
-                        typedefinitions.extend(define_class(definition))
+                    typedefinitions.extend(define_class(definition))
 
                 case StructureDefinitionKind.PRIMITIVE:
                     typedefinitions.extend(define_alias(definition))

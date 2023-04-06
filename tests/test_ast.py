@@ -358,7 +358,7 @@ def test_unrolls_required_polymorphic_into_class_uion():
         ],
         [
             ast.ClassDef(
-                name="_TestResourceBase",
+                name="TestResource",
                 bases=[ast.Name(id="BaseModel")],
                 keywords=EXPECTED_BASE_MODEL_CONFIG,
                 body=[
@@ -372,40 +372,24 @@ def test_unrolls_required_polymorphic_into_class_uion():
                         value=ast.Constant(None),
                     ),
                     ast.Expr(value=ast.Constant(value="monotype property definition")),
-                ],
-                decorator_list=[],
-            ),
-            ast.ClassDef(
-                name="_TestResourceBoolean",
-                bases=[ast.Name(id="_TestResourceBase")],
-                keywords=[],
-                body=[
-                    ast.Expr(
-                        value=ast.Constant(value="polymorphic property definition")
-                    ),
                     ast.AnnAssign(
                         target=ast.Name(id="valueBoolean"),
-                        annotation=ast.Str("boolean"),
+                        annotation=ast.Subscript(
+                            value=ast.Name(id="Optional_"), slice=ast.Str("boolean")
+                        ),
                         simple=1,
+                        value=ast.Constant(None),
                     ),
-                    ast.Expr(
-                        value=ast.Constant(value="polymorphic property definition")
-                    ),
-                ],
-                decorator_list=[],
-            ),
-            ast.ClassDef(
-                name="_TestResourceQuantity",
-                bases=[ast.Name(id="_TestResourceBase")],
-                keywords=[],
-                body=[
                     ast.Expr(
                         value=ast.Constant(value="polymorphic property definition")
                     ),
                     ast.AnnAssign(
                         target=ast.Name(id="valueQuantity"),
-                        annotation=ast.Str("Quantity"),
+                        annotation=ast.Subscript(
+                            value=ast.Name(id="Optional_"), slice=ast.Str("Quantity")
+                        ),
                         simple=1,
+                        value=ast.Constant(None),
                     ),
                     ast.Expr(
                         value=ast.Constant(value="polymorphic property definition")
@@ -413,31 +397,9 @@ def test_unrolls_required_polymorphic_into_class_uion():
                 ],
                 decorator_list=[],
             ),
-            ast.Assign(
-                targets=[ast.Name("TestResource")],
-                value=ast.BinOp(
-                    left=ast.Name("_TestResourceBoolean"),
-                    right=ast.Name("_TestResourceQuantity"),
-                    op=ast.BitOr(),
-                ),
-            ),
             ast.Call(
                 ast.Attribute(
-                    value=ast.Name("_TestResourceBase"), attr="update_forward_refs"
-                ),
-                args=[],
-                keywords=[],
-            ),
-            ast.Call(
-                ast.Attribute(
-                    value=ast.Name("_TestResourceBoolean"), attr="update_forward_refs"
-                ),
-                args=[],
-                keywords=[],
-            ),
-            ast.Call(
-                ast.Attribute(
-                    value=ast.Name("_TestResourceQuantity"), attr="update_forward_refs"
+                    value=ast.Name("TestResource"), attr="update_forward_refs"
                 ),
                 args=[],
                 keywords=[],
