@@ -13,7 +13,7 @@ NUMBER_OF_SAMPLES_TO_VALIDATE = 10
 def iterate_synthea_bundles():
     directory = os.path.join(os.path.dirname(__file__), "./fhir/")
     directory_content = random.sample(
-        (path for path in os.listdir(directory) if path.endswith(".json")),
+        [path for path in os.listdir(directory) if path.endswith(".json")],
         NUMBER_OF_SAMPLES_TO_VALIDATE,
     )
     for filename in directory_content:
