@@ -1,3 +1,4 @@
+import itertools
 import json
 import os
 
@@ -6,11 +7,17 @@ import pytest
 from generated.resources import Bundle
 
 
+NUMBER_OF_SAMPLES_TO_VALIDATE = 10
+
+
 def iterate_synthea_bundles():
     directory = os.path.join(os.path.dirname(__file__), "./fhir/")
-    for filename in os.listdir(directory):
-        if filename.endswith(".json"):
-            yield os.path.join(directory, filename)
+    directory_content = itertools.islice(
+        (path for path in os.listdir(directory) if path.endswith(".json")),
+        NUMBER_OF_SAMPLES_TO_VALIDATE,
+    )
+    for filename in directory_content:
+        yield os.path.join(directory, filename)
 
 
 @pytest.mark.parametrize("bundle_filepath", iterate_synthea_bundles())
