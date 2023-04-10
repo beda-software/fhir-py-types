@@ -99,4 +99,4 @@ jobs:
         bash download_sample_bundle.sh
         cd ../../
     - name: Test Synthea samples can be parsed
-      run: poetry run pytest regression/synthea/test_synthea_samples.py
+      run: poetry run pytest regression/synthea/test_synthea_samples.py -vv
