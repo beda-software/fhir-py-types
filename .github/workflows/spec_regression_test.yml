@@ -32,9 +32,9 @@ jobs:
         uses: actions/cache@v3
         with:
           key: ${{ runner.os }}-spec-download-${{ hashFiles('./spec/${{ matrix.spec_version }}.bundle.checksumfile') }}
-          path:
-            - ./spec/fhir.types.json
-            - ./spec/fhir.resources.json
+          path: |
+            ./spec/fhir.types.json
+            ./spec/fhir.resources.json
       - name: Download spec StructureDefinition bundle
         if: steps.spec-download.outputs.cache-hit != 'true'
         run: |
