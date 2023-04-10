@@ -31,7 +31,7 @@ jobs:
         id: spec-download
         uses: actions/cache@v3
         with:
-          key: ${{ runner.os }}-spec-download-${{ hashFiles('./spec/${{ matrix.spec_version }}.bundle.checksumfile') }}
+          key: ${{ runner.os }}-spec-download-${{ hashFiles(format('./spec/{0}.bundle.checksumfile', matrix.spec_version)) }}
           path: |
             ./spec/fhir.types.json
             ./spec/fhir.resources.json
