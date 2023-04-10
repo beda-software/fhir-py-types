@@ -1,0 +1,52 @@
+name: Synthea Samples Regression Test
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry install
+    - name: Cache spec generated resource models
+      id: spec-download
+      uses: actions/cache@v3
+      with:
+        key: ${{ runner.os }}-spec-download-${{ hashFiles('./spec/r4.bundle.checksumfile') }}
+        path: ./generated/resources.py
+    - name: Download R4 spec and build resource models
+      if: steps.spec-download.outputs.cache-hit != 'true'
+      run: |
+        cd ./spec/
+        sh download_spec_bundle.sh
+        cd ..
+        poetry run typegen --from-bundles spec/fhir.types.json --from-bundles spec/fhir.resources.json --outfile generated/resources.py
+        poetry run mypy generated/resources.py
+    - name: Cache Synthea samples
+      id: synthea-samples-download
+      uses: actions/cache@v3
+      with:
+        key: ${{ runner.os }}-synthea-samples-download-${{ hashFiles('./regression/synthea/r4.bundle.checksumfile') }}
+        path: ./regression/synthea/fhir/
+    - name: Download Synthea samples
+      if: steps.synthea-samples-download.outputs.cache-hit != 'true'
+      run: |
+        cd ./regression/synthea/
+        sh download_sample_bundle.sh
+        cd ../../
+    - name: Test Synthea samples can be parsed
+      run: poetry run pytest regression/synthea/test_synthea_samples.py

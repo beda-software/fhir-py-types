@@ -1,0 +1,5 @@
+*
+!.gitignore
+!r4.bundle.checksumfile
+!download_sample_bundle.sh
+!test_synthea_samples.py
