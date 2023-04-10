@@ -32,7 +32,7 @@ jobs:
       if: steps.spec-download.outputs.cache-hit != 'true'
       run: |
         cd ./spec/
-        sh download_spec_bundle.sh
+        bash download_spec_bundle.sh
         cd ..
         poetry run typegen --from-bundles spec/fhir.types.json --from-bundles spec/fhir.resources.json --outfile generated/resources.py
         poetry run mypy generated/resources.py
@@ -46,7 +46,7 @@ jobs:
       if: steps.synthea-samples-download.outputs.cache-hit != 'true'
       run: |
         cd ./regression/synthea/
-        sh download_sample_bundle.sh
+        bash download_sample_bundle.sh
         cd ../../
     - name: Test Synthea samples can be parsed
       run: poetry run pytest regression/synthea/test_synthea_samples.py
