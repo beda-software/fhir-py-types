@@ -2,7 +2,7 @@ name: Synthea Samples Regression Test
 
 on:
   workflow_run:
-    workflows: ["Test"]
+    workflows: ["Spec Resource Models Generation Regression Test"]
     branches: ["main"]
     types: ["completed"]
 
