@@ -45,7 +45,7 @@ def main() -> None:
             [
                 "from typing import List as List_, Optional as Optional_, Literal as Literal_, Annotated as Annotated_\n",
                 "from datetime import time, date, datetime\n",
-                "from %s import %s as BaseModel\n" % tuple(args.base_model.rsplit(".", 1))
+                "from %s import %s as BaseModel\n" % tuple(args.base_model.rsplit(".", 1)),
                 "from pydantic import Field, Extra\n",
                 "\n\n",
                 "\n\n\n".join(
