@@ -27,6 +27,13 @@ def main() -> None:
         required=True,
         help="File path to write generated Python typed data models to",
     )
+    argparser.add_argument(
+        "--base-model",
+        default="pydantic.BaseModel",
+        required=True,
+        help="Python path to the Base Model class to use as the base class for generated models",
+    )
+    
     args = argparser.parse_args()
 
     ast_ = itertools.chain.from_iterable(
@@ -38,7 +45,8 @@ def main() -> None:
             [
                 "from typing import List as List_, Optional as Optional_, Literal as Literal_, Annotated as Annotated_\n",
                 "from datetime import time, date, datetime\n",
-                "from pydantic import BaseModel, Field, Extra\n",
+                "from %s import %s as BaseModel\n" % tuple(args.base_model.rsplit(".", 1))
+                "from pydantic import Field, Extra\n",
                 "\n\n",
                 "\n\n\n".join(
                     ast.unparse(ast.fix_missing_locations(tree)) for tree in ast_
