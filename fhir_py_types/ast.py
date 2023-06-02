@@ -49,11 +49,8 @@ def make_type_annotation(
 def make_default_initializer(identifier: str, type_: StructurePropertyType):
     default_value = ast.Constant(None)
     keywords: List[ast.keyword] = []
-    if type_.isarray:
-        if not type_.required:
-            keywords.append(ast.keyword(arg="default", value=ast.Ellipsis()))
-        else:
-            keywords.append(ast.keyword(arg="default_factory", value=ast.Name("list")))
+    if type_.isarray and not type_.required:
+        keywords.append(ast.keyword(arg="default_factory", value=ast.Name("list")))
     else:
         if type_.required:
             default_value = ast.Ellipsis()
