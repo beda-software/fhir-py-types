@@ -29,9 +29,8 @@ def main() -> None:
     )
     args = argparser.parse_args()
 
-    ast_ = itertools.chain.from_iterable(
-        build_ast(load_from_bundle(bundle)) for bundle in args.from_bundles
-    )
+    structure_definitions = itertools.chain.from_iterable(load_from_bundle(bundle) for bundle in args.from_bundles)
+    ast_ = build_ast(structure_definitions)
 
     with open(os.path.abspath(args.outfile), "w") as resource_file:
         resource_file.writelines(
