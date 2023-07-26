@@ -1,8 +1,7 @@
 import ast
+from collections.abc import Sequence
 
 import pytest
-
-from typing import Sequence
 
 from fhir_py_types import (
     StructureDefinition,
@@ -20,18 +19,20 @@ EXPECTED_BASE_MODEL_CONFIG = [
 ]
 
 
-def assert_eq(definitions: Sequence[StructureDefinition], ast_tree: Sequence[ast.stmt]):
+def assert_eq(
+    definitions: Sequence[StructureDefinition], ast_tree: Sequence[ast.stmt | ast.expr]
+) -> None:
     generated = [ast.dump(t) for t in build_ast(definitions)]
     expected = [ast.dump(t) for t in ast_tree]
 
     assert generated == expected
 
 
-def test_generates_empty_ast_from_empty_definitions():
+def test_generates_empty_ast_from_empty_definitions() -> None:
     assert build_ast([]) == []
 
 
-def test_generates_class_for_flat_definition():
+def test_generates_class_for_flat_definition() -> None:
     assert_eq(
         [
             StructureDefinition(
@@ -85,7 +86,7 @@ def test_generates_class_for_flat_definition():
 
 
 @pytest.mark.parametrize(
-    "definitions, ast_tree",
+    ("definitions", "ast_tree"),
     [
         (
             [
@@ -109,11 +110,13 @@ def test_generates_class_for_flat_definition():
         ),
     ],
 )
-def test_generates_alias_for_primitive_kind_definition(definitions, ast_tree):
+def test_generates_alias_for_primitive_kind_definition(
+    definitions: list[StructureDefinition], ast_tree: list[ast.stmt]
+) -> None:
     assert_eq(definitions, ast_tree)
 
 
-def test_generates_multiple_classes_for_compound_definition():
+def test_generates_multiple_classes_for_compound_definition() -> None:
     assert_eq(
         [
             StructureDefinition(
@@ -206,7 +209,7 @@ def test_generates_multiple_classes_for_compound_definition():
 
 
 @pytest.mark.parametrize(
-    "required, isarray, literal, expected_annotation",
+    ("required", "isarray", "literal", "expected_annotation"),
     [
         (
             False,
@@ -255,8 +258,11 @@ def test_generates_multiple_classes_for_compound_definition():
     ],
 )
 def test_generates_annotations_according_to_structure_type(
-    required, isarray, literal, expected_annotation
-):
+    required: bool,
+    isarray: bool,
+    literal: bool,
+    expected_annotation: ast.Subscript | ast.Str,
+) -> None:
     assert_eq(
         [
             StructureDefinition(
@@ -317,7 +323,7 @@ def test_generates_annotations_according_to_structure_type(
     )
 
 
-def test_unrolls_required_polymorphic_into_class_uion():
+def test_unrolls_required_polymorphic_into_class_uion() -> None:
     assert_eq(
         [
             StructureDefinition(

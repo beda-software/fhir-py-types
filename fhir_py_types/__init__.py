@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
 
 
 class StructureDefinitionKind(Enum):
@@ -11,7 +10,7 @@ class StructureDefinitionKind(Enum):
     RESOURCE = "resource"
 
     @staticmethod
-    def from_str(kind):
+    def from_str(kind: str) -> "StructureDefinitionKind":
         match kind:
             case "primitive-type":
                 return StructureDefinitionKind.PRIMITIVE
@@ -33,17 +32,17 @@ class StructurePropertyType:
     required: bool = False
     isarray: bool = False
     literal: bool = False
-    target_profile: Optional[List[str]] = None
+    target_profile: list[str] | None = None
 
 
 @dataclass(frozen=True)
 class StructureDefinition:
     id: str
     docstring: str
-    type: List[StructurePropertyType]
+    type: list[StructurePropertyType]
     elements: dict[str, "StructureDefinition"]
-    kind: Optional[StructureDefinitionKind] = None
+    kind: StructureDefinitionKind | None = None
 
 
-def is_polymorphic(definition: StructureDefinition):
+def is_polymorphic(definition: StructureDefinition) -> bool:
     return len(definition.type) > 1

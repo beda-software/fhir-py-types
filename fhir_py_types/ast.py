@@ -3,10 +3,10 @@ import functools
 import itertools
 import keyword
 import logging
-
+from collections.abc import Iterable
 from dataclasses import replace
 from enum import Enum, auto
-from typing import Iterable, List, Literal, Tuple, cast
+from typing import Literal, cast
 
 from fhir_py_types import (
     StructureDefinition,
@@ -14,7 +14,6 @@ from fhir_py_types import (
     StructurePropertyType,
     is_polymorphic,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,9 @@ def make_type_annotation(
     return annotation
 
 
-def make_default_initializer(identifier: str, type_: StructurePropertyType):
+def make_default_initializer(
+    identifier: str, type_: StructurePropertyType
+) -> ast.expr | None:
     default: ast.expr | None = None
 
     if keyword.iskeyword(identifier):
@@ -74,7 +75,8 @@ def make_default_initializer(identifier: str, type_: StructurePropertyType):
 def format_identifier(
     definition: StructureDefinition, identifier: str, type_: StructurePropertyType
 ) -> str:
-    uppercamelcase = lambda s: s[:1].upper() + s[1:]
+    def uppercamelcase(s: str) -> str:
+        return s[:1].upper() + s[1:]
 
     return (
         identifier + uppercamelcase(type_.code)
@@ -83,7 +85,9 @@ def format_identifier(
     )
 
 
-def remap_type(definition: StructureDefinition, type_: StructurePropertyType):
+def remap_type(
+    definition: StructureDefinition, type_: StructurePropertyType
+) -> StructurePropertyType:
     if not type_.literal:
         match type_.code:
             case "Resource":
@@ -106,7 +110,7 @@ def remap_type(definition: StructureDefinition, type_: StructurePropertyType):
 
 def zip_identifier_type(
     definition: StructureDefinition, identifier: str
-) -> Iterable[Tuple[str, StructurePropertyType]]:
+) -> Iterable[tuple[str, StructurePropertyType]]:
     return (
         (format_identifier(definition, identifier, t), t)
         for t in [remap_type(definition, t) for t in definition.type]
@@ -149,7 +153,7 @@ def type_annotate(
 
 def order_type_overriding_properties(
     properties_definition: dict[str, StructureDefinition]
-) -> Iterable[Tuple[str, StructureDefinition]]:
+) -> Iterable[tuple[str, StructureDefinition]]:
     property_types = {
         t.code for definition in properties_definition.values() for t in definition.type
     }
@@ -160,24 +164,12 @@ def order_type_overriding_properties(
 
 
 def define_class_object(
-    definition: StructureDefinition, base="BaseModel"
+    definition: StructureDefinition,
 ) -> Iterable[ast.stmt | ast.expr]:
-    match base:
-        case "BaseModel":
-            base_class_kwargs: Iterable[ast.keyword] = [
-                ast.keyword(
-                    arg="extra",
-                    value=ast.Attribute(value=ast.Name("Extra"), attr="forbid"),
-                ),
-                ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
-            ]
-        case _:
-            base_class_kwargs = []
-
     return [
         ast.ClassDef(
             definition.id,
-            bases=[ast.Name(base)],
+            bases=[ast.Name("BaseModel")],
             body=[
                 ast.Expr(value=ast.Str(definition.docstring)),
                 *itertools.chain.from_iterable(
@@ -188,7 +180,13 @@ def define_class_object(
                 ),
             ],
             decorator_list=[],
-            keywords=base_class_kwargs,
+            keywords=[
+                ast.keyword(
+                    arg="extra",
+                    value=ast.Attribute(value=ast.Name("Extra"), attr="forbid"),
+                ),
+                ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
+            ],
         ),
         ast.Call(
             ast.Attribute(value=ast.Name(definition.id), attr="update_forward_refs"),
@@ -198,10 +196,8 @@ def define_class_object(
     ]
 
 
-def define_class(
-    definition: StructureDefinition, base="BaseModel"
-) -> Iterable[ast.stmt | ast.expr]:
-    return define_class_object(definition, base=base)
+def define_class(definition: StructureDefinition) -> Iterable[ast.stmt | ast.expr]:
+    return define_class_object(definition)
 
 
 def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
@@ -276,7 +272,7 @@ def build_ast(
     structure_definitions: Iterable[StructureDefinition],
 ) -> Iterable[ast.stmt | ast.expr]:
     structure_definitions = list(structure_definitions)
-    typedefinitions: List[ast.stmt | ast.expr] = []
+    typedefinitions: list[ast.stmt | ast.expr] = []
 
     for root in structure_definitions:
         for definition in iterate_definitions_tree(root):

@@ -7,7 +7,6 @@ import os
 from fhir_py_types.ast import build_ast
 from fhir_py_types.reader.bundle import load_from_bundle
 
-
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
