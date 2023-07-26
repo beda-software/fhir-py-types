@@ -37,10 +37,10 @@ def make_type_annotation(
         annotation = ast.Subscript(value=ast.Name("Literal_"), slice=annotation)
 
     if type_.isarray:
-        annotation = ast.Subscript(value=ast.Name("List_"), slice=annotation)
+        annotation = ast.Subscript(value=ast.Name("list"), slice=annotation)
 
     if not type_.required and form != AnnotationForm.TypeAlias:
-        annotation = ast.Subscript(value=ast.Name("Optional_"), slice=annotation)
+        annotation = ast.BinOp(left=annotation, right=ast.Name("None"), op=ast.BitOr())
 
     return annotation
 

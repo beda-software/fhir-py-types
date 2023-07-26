@@ -163,8 +163,8 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                     ast.Expr(value=ast.Constant(value="nested resource definition")),
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
-                        annotation=ast.Subscript(
-                            value=ast.Name(id="Optional_"), slice=ast.Str("str")
+                        annotation=ast.BinOp(
+                            left=ast.Str("str"), right=ast.Name("None"), op=ast.BitOr()
                         ),
                         simple=1,
                         value=ast.Constant(None),
@@ -215,7 +215,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             False,
             False,
             False,
-            ast.Subscript(value=ast.Name(id="Optional_"), slice=ast.Str("str")),
+            ast.BinOp(left=ast.Str("str"), right=ast.Name("None"), op=ast.BitOr()),
         ),
         (
             True,
@@ -227,16 +227,17 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             False,
             True,
             False,
-            ast.Subscript(
-                value=ast.Name(id="Optional_"),
-                slice=ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
+            ast.BinOp(
+                left=ast.Subscript(value=ast.Name(id="list"), slice=ast.Str("str")),
+                right=ast.Name("None"),
+                op=ast.BitOr(),
             ),
         ),
         (
             True,
             True,
             False,
-            ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
+            ast.Subscript(value=ast.Name(id="list"), slice=ast.Str("str")),
         ),
         (
             True,
@@ -248,11 +249,10 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             False,
             False,
             True,
-            ast.Subscript(
-                value=ast.Name(id="Optional_"),
-                slice=ast.Subscript(
-                    value=ast.Name(id="Literal_"), slice=ast.Str("str")
-                ),
+            ast.BinOp(
+                left=ast.Subscript(value=ast.Name(id="Literal_"), slice=ast.Str("str")),
+                right=ast.Name("None"),
+                op=ast.BitOr(),
             ),
         ),
     ],
@@ -371,8 +371,10 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
                         target=ast.Name(id="monotype"),
-                        annotation=ast.Subscript(
-                            value=ast.Name(id="Optional_"), slice=ast.Str("boolean")
+                        annotation=ast.BinOp(
+                            left=ast.Str("boolean"),
+                            right=ast.Name("None"),
+                            op=ast.BitOr(),
                         ),
                         simple=1,
                         value=ast.Constant(None),
@@ -380,8 +382,10 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                     ast.Expr(value=ast.Constant(value="monotype property definition")),
                     ast.AnnAssign(
                         target=ast.Name(id="valueBoolean"),
-                        annotation=ast.Subscript(
-                            value=ast.Name(id="Optional_"), slice=ast.Str("boolean")
+                        annotation=ast.BinOp(
+                            left=ast.Str("boolean"),
+                            right=ast.Name("None"),
+                            op=ast.BitOr(),
                         ),
                         simple=1,
                         value=ast.Constant(None),
@@ -391,8 +395,10 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                     ),
                     ast.AnnAssign(
                         target=ast.Name(id="valueQuantity"),
-                        annotation=ast.Subscript(
-                            value=ast.Name(id="Optional_"), slice=ast.Str("Quantity")
+                        annotation=ast.BinOp(
+                            left=ast.Str("Quantity"),
+                            right=ast.Name("None"),
+                            op=ast.BitOr(),
                         ),
                         simple=1,
                         value=ast.Constant(None),

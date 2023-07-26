@@ -28,13 +28,16 @@ def main() -> None:
     )
     args = argparser.parse_args()
 
-    structure_definitions = itertools.chain.from_iterable(load_from_bundle(bundle) for bundle in args.from_bundles)
-    ast_ = build_ast(structure_definitions)
+    ast_ = build_ast(
+        itertools.chain.from_iterable(
+            load_from_bundle(bundle) for bundle in args.from_bundles
+        )
+    )
 
     with open(os.path.abspath(args.outfile), "w") as resource_file:
         resource_file.writelines(
             [
-                "from typing import List as List_, Optional as Optional_, Literal as Literal_, Annotated as Annotated_\n",
+                "from typing import Literal as Literal_, Annotated as Annotated_\n",
                 "from datetime import time, date, datetime\n",
                 "from pydantic import BaseModel, Field, Extra\n",
                 "\n\n",
