@@ -12,6 +12,7 @@ pydantic = "^1.10.7"
 [tool.poetry.group.dev.dependencies]
 black = {version = "^23.1a1", allow-prereleases = true}
 pytest = "^7.2.1"
+mypy = "^1.0.0"
 ruff = "^0.0.280"
 autohooks = "^23.7.0"
 autohooks-plugin-black = "^23.7.0"
@@ -21,9 +22,6 @@ autohooks-plugin-ruff = "^23.6.1"
 [tool.autohooks]
 mode = "poetry"
 pre-commit = ["autohooks.plugins.black", "autohooks.plugins.mypy", "autohooks.plugins.ruff"]
-
-[tool.poetry.group.typecheckers.dependencies]
-mypy = "^1.0.0"
 
 [tool.poetry.scripts]
 typegen = "fhir_py_types.cli:main"
