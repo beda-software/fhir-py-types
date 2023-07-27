@@ -29,10 +29,8 @@ def main() -> None:
     argparser.add_argument(
         "--base-model",
         default="pydantic.BaseModel",
-        required=True,
         help="Python path to the Base Model class to use as the base class for generated models",
     )
-    
     args = argparser.parse_args()
 
     ast_ = build_ast(
@@ -46,7 +44,9 @@ def main() -> None:
             [
                 "from typing import Literal as Literal_, Annotated as Annotated_\n",
                 "from datetime import time, date, datetime\n",
-                "from %s import %s as BaseModel\n" % tuple(args.base_model.rsplit(".", 1)),
+                "from {} import {} as BaseModel\n".format(
+                    *args.base_model.rsplit(".", 1)
+                ),
                 "from pydantic import Field, Extra\n",
                 "\n\n",
                 "\n\n\n".join(
