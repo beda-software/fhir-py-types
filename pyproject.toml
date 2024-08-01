@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fhir-py-types"
-version = "0.2.0"
+version = "0.3.0"
 description = "Convert FHIR StructureDefinition into Python type annotations"
 authors = ["beda.software <info@beda.software>"]
 packages = [{include = "fhir_py_types"}]
