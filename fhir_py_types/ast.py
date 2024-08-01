@@ -189,7 +189,7 @@ def define_class_object(
             ],
         ),
         ast.Call(
-            ast.Attribute(value=ast.Name(definition.id), attr="update_forward_refs"),
+            ast.Attribute(value=ast.Name(definition.id), attr="model_rebuild"),
             args=[],
             keywords=[],
         ),
@@ -285,9 +285,7 @@ def build_ast(
 
                 case _:
                     logger.warning(
-                        "Unsupported definition {} of kind {}, skipping".format(
-                            definition.id, definition.kind
-                        )
+                        f"Unsupported definition {definition.id} of kind {definition.kind}, skipping"
                     )
 
     resources = list(select_tagged_resources(structure_definitions, key="resourceType"))

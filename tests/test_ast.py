@@ -75,9 +75,7 @@ def test_generates_class_for_flat_definition() -> None:
                 decorator_list=[],
             ),
             ast.Call(
-                ast.Attribute(
-                    value=ast.Name("TestResource"), attr="update_forward_refs"
-                ),
+                ast.Attribute(value=ast.Name("TestResource"), attr="model_rebuild"),
                 args=[],
                 keywords=[],
             ),
@@ -192,15 +190,13 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             ),
             ast.Call(
                 ast.Attribute(
-                    value=ast.Name("NestedTestResource"), attr="update_forward_refs"
+                    value=ast.Name("NestedTestResource"), attr="model_rebuild"
                 ),
                 args=[],
                 keywords=[],
             ),
             ast.Call(
-                ast.Attribute(
-                    value=ast.Name("TestResource"), attr="update_forward_refs"
-                ),
+                ast.Attribute(value=ast.Name("TestResource"), attr="model_rebuild"),
                 args=[],
                 keywords=[],
             ),
@@ -313,9 +309,7 @@ def test_generates_annotations_according_to_structure_type(
                 decorator_list=[],
             ),
             ast.Call(
-                ast.Attribute(
-                    value=ast.Name("TestResource"), attr="update_forward_refs"
-                ),
+                ast.Attribute(value=ast.Name("TestResource"), attr="model_rebuild"),
                 args=[],
                 keywords=[],
             ),
@@ -404,9 +398,7 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                 decorator_list=[],
             ),
             ast.Call(
-                ast.Attribute(
-                    value=ast.Name("TestResource"), attr="update_forward_refs"
-                ),
+                ast.Attribute(value=ast.Name("TestResource"), attr="model_rebuild"),
                 args=[],
                 keywords=[],
             ),
