@@ -6,7 +6,7 @@ authors = ["beda.software <info@beda.software>"]
 packages = [{include = "fhir_py_types"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 pydantic = "^2.8.0"
 
 [tool.poetry.group.dev.dependencies]
