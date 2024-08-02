@@ -190,7 +190,7 @@ def define_class_object(
             type_params=[],
         ),
         ast.Call(
-            ast.Attribute(value=ast.Name(definition.id), attr="model_rebuild"),
+            ast.Attribute(value=ast.Name(definition.id), attr="update_forward_refs"),
             args=[],
             keywords=[],
         ),

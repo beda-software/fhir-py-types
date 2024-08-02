@@ -76,7 +76,9 @@ def test_generates_class_for_flat_definition() -> None:
                 type_params=[],
             ),
             ast.Call(
-                ast.Attribute(value=ast.Name("TestResource"), attr="model_rebuild"),
+                ast.Attribute(
+                    value=ast.Name("TestResource"), attr="update_forward_refs"
+                ),
                 args=[],
                 keywords=[],
             ),
@@ -193,13 +195,15 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             ),
             ast.Call(
                 ast.Attribute(
-                    value=ast.Name("NestedTestResource"), attr="model_rebuild"
+                    value=ast.Name("NestedTestResource"), attr="update_forward_refs"
                 ),
                 args=[],
                 keywords=[],
             ),
             ast.Call(
-                ast.Attribute(value=ast.Name("TestResource"), attr="model_rebuild"),
+                ast.Attribute(
+                    value=ast.Name("TestResource"), attr="update_forward_refs"
+                ),
                 args=[],
                 keywords=[],
             ),
@@ -315,7 +319,9 @@ def test_generates_annotations_according_to_structure_type(
                 type_params=[],
             ),
             ast.Call(
-                ast.Attribute(value=ast.Name("TestResource"), attr="model_rebuild"),
+                ast.Attribute(
+                    value=ast.Name("TestResource"), attr="update_forward_refs"
+                ),
                 args=[],
                 keywords=[],
             ),
@@ -408,7 +414,9 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                 type_params=[],
             ),
             ast.Call(
-                ast.Attribute(value=ast.Name("TestResource"), attr="model_rebuild"),
+                ast.Attribute(
+                    value=ast.Name("TestResource"), attr="update_forward_refs"
+                ),
                 args=[],
                 keywords=[],
             ),
