@@ -1,19 +1,19 @@
 [tool.poetry]
 name = "fhir-py-types"
-version = "0.2.0"
+version = "0.3.0"
 description = "Convert FHIR StructureDefinition into Python type annotations"
 authors = ["beda.software <info@beda.software>"]
 packages = [{include = "fhir_py_types"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-pydantic = "^1.10.7"
+python = "^3.12"
+pydantic = "^1.10.17"
 
 [tool.poetry.group.dev.dependencies]
 black = {version = "^23.1a1", allow-prereleases = true}
 pytest = "^7.2.1"
 mypy = "^1.0.0"
-ruff = "^0.0.280"
+ruff = "^0.5.5"
 autohooks = "^23.7.0"
 autohooks-plugin-black = "^23.7.0"
 autohooks-plugin-mypy = "^23.3.0"

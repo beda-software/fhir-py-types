@@ -67,12 +67,13 @@ def test_generates_class_for_flat_definition() -> None:
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
-                        annotation=ast.Str("str"),
+                        annotation=ast.Constant("str"),
                         simple=1,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
                 decorator_list=[],
+                type_params=[],
             ),
             ast.Call(
                 ast.Attribute(
@@ -105,7 +106,7 @@ def test_generates_class_for_flat_definition() -> None:
                     targets=[ast.Name("TestResource")],
                     value=ast.Name("str"),
                 ),
-                ast.Expr(value=ast.Str("test resource description")),
+                ast.Expr(value=ast.Constant("test resource description")),
             ],
         ),
     ],
@@ -164,7 +165,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Optional_"), slice=ast.Str("str")
+                            value=ast.Name(id="Optional_"), slice=ast.Constant("str")
                         ),
                         simple=1,
                         value=ast.Constant(None),
@@ -174,6 +175,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                     ),
                 ],
                 decorator_list=[],
+                type_params=[],
             ),
             ast.ClassDef(
                 name="TestResource",
@@ -183,12 +185,13 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
                         target=ast.Name(id="complexproperty"),
-                        annotation=ast.Str("NestedTestResource"),
+                        annotation=ast.Constant("NestedTestResource"),
                         simple=1,
                     ),
                     ast.Expr(value=ast.Constant(value="nested resource definition")),
                 ],
                 decorator_list=[],
+                type_params=[],
             ),
             ast.Call(
                 ast.Attribute(
@@ -215,13 +218,13 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             False,
             False,
             False,
-            ast.Subscript(value=ast.Name(id="Optional_"), slice=ast.Str("str")),
+            ast.Subscript(value=ast.Name(id="Optional_"), slice=ast.Constant("str")),
         ),
         (
             True,
             False,
             False,
-            ast.Str("str"),
+            ast.Constant("str"),
         ),
         (
             False,
@@ -229,20 +232,22 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             False,
             ast.Subscript(
                 value=ast.Name(id="Optional_"),
-                slice=ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
+                slice=ast.Subscript(
+                    value=ast.Name(id="List_"), slice=ast.Constant("str")
+                ),
             ),
         ),
         (
             True,
             True,
             False,
-            ast.Subscript(value=ast.Name(id="List_"), slice=ast.Str("str")),
+            ast.Subscript(value=ast.Name(id="List_"), slice=ast.Constant("str")),
         ),
         (
             True,
             False,
             True,
-            ast.Subscript(value=ast.Name(id="Literal_"), slice=ast.Str("str")),
+            ast.Subscript(value=ast.Name(id="Literal_"), slice=ast.Constant("str")),
         ),
         (
             False,
@@ -251,7 +256,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             ast.Subscript(
                 value=ast.Name(id="Optional_"),
                 slice=ast.Subscript(
-                    value=ast.Name(id="Literal_"), slice=ast.Str("str")
+                    value=ast.Name(id="Literal_"), slice=ast.Constant("str")
                 ),
             ),
         ),
@@ -261,7 +266,7 @@ def test_generates_annotations_according_to_structure_type(
     required: bool,
     isarray: bool,
     literal: bool,
-    expected_annotation: ast.Subscript | ast.Str,
+    expected_annotation: ast.Subscript | ast.Constant,
 ) -> None:
     assert_eq(
         [
@@ -304,13 +309,14 @@ def test_generates_annotations_according_to_structure_type(
                         simple=1,
                         value=ast.Constant(None)
                         if not required
-                        else ast.Str("str")
+                        else ast.Constant("str")
                         if literal
                         else None,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
                 decorator_list=[],
+                type_params=[],
             ),
             ast.Call(
                 ast.Attribute(
@@ -372,7 +378,8 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                     ast.AnnAssign(
                         target=ast.Name(id="monotype"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Optional_"), slice=ast.Str("boolean")
+                            value=ast.Name(id="Optional_"),
+                            slice=ast.Constant("boolean"),
                         ),
                         simple=1,
                         value=ast.Constant(None),
@@ -381,7 +388,8 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                     ast.AnnAssign(
                         target=ast.Name(id="valueBoolean"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Optional_"), slice=ast.Str("boolean")
+                            value=ast.Name(id="Optional_"),
+                            slice=ast.Constant("boolean"),
                         ),
                         simple=1,
                         value=ast.Constant(None),
@@ -392,7 +400,8 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                     ast.AnnAssign(
                         target=ast.Name(id="valueQuantity"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Optional_"), slice=ast.Str("Quantity")
+                            value=ast.Name(id="Optional_"),
+                            slice=ast.Constant("Quantity"),
                         ),
                         simple=1,
                         value=ast.Constant(None),
@@ -402,6 +411,7 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                     ),
                 ],
                 decorator_list=[],
+                type_params=[],
             ),
             ast.Call(
                 ast.Attribute(

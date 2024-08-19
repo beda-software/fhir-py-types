@@ -31,7 +31,7 @@ def make_type_annotation(
         case AnnotationForm.TypeAlias:
             annotation: ast.expr = ast.Name(type_.code)
         case _:
-            annotation = ast.Str(type_.code)
+            annotation = ast.Constant(type_.code)
 
     if type_.literal:
         annotation = ast.Subscript(value=ast.Name("Literal_"), slice=annotation)
@@ -67,7 +67,7 @@ def make_default_initializer(
         if not type_.required:
             default = ast.Constant(None)
         elif type_.literal and not type_.isarray:
-            default = ast.Str(type_.code)
+            default = ast.Constant(type_.code)
 
     return default
 
@@ -145,14 +145,14 @@ def type_annotate(
                 form,
                 default=make_default_initializer(identifier_, type_),
             ),
-            ast.Expr(value=ast.Str(defintion.docstring)),
+            ast.Expr(value=ast.Constant(defintion.docstring)),
         ]
         for (identifier_, type_) in zip_identifier_type(defintion, identifier)
     )
 
 
 def order_type_overriding_properties(
-    properties_definition: dict[str, StructureDefinition]
+    properties_definition: dict[str, StructureDefinition],
 ) -> Iterable[tuple[str, StructureDefinition]]:
     property_types = {
         t.code for definition in properties_definition.values() for t in definition.type
@@ -171,7 +171,7 @@ def define_class_object(
             definition.id,
             bases=[ast.Name("BaseModel")],
             body=[
-                ast.Expr(value=ast.Str(definition.docstring)),
+                ast.Expr(value=ast.Constant(definition.docstring)),
                 *itertools.chain.from_iterable(
                     type_annotate(property, identifier, AnnotationForm.Property)
                     for identifier, property in order_type_overriding_properties(
@@ -187,6 +187,7 @@ def define_class_object(
                 ),
                 ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
             ],
+            type_params=[],
         ),
         ast.Call(
             ast.Attribute(value=ast.Name(definition.id), attr="update_forward_refs"),
@@ -285,9 +286,7 @@ def build_ast(
 
                 case _:
                     logger.warning(
-                        "Unsupported definition {} of kind {}, skipping".format(
-                            definition.id, definition.kind
-                        )
+                        f"Unsupported definition {definition.id} of kind {definition.kind}, skipping"
                     )
 
     resources = list(select_tagged_resources(structure_definitions, key="resourceType"))

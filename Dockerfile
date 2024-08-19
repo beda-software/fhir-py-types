@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.12
 
 RUN addgroup --gid 1000 dockeruser
 RUN adduser --disabled-login --uid 1000 --gid 1000 dockeruser
