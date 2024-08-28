@@ -43,7 +43,6 @@ def main() -> None:
         resource_file.writelines(
             [
                 "from typing import List as List_, Optional as Optional_, Literal as Literal_, Annotated as Annotated_\n",
-                "from datetime import time, date, datetime\n",
                 "from {} import {} as BaseModel\n".format(
                     *args.base_model.rsplit(".", 1)
                 ),
