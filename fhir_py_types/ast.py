@@ -116,7 +116,10 @@ def zip_identifier_type(
 
     for t in [remap_type(definition, t) for t in definition.type]:
         result.append((format_identifier(definition, identifier, t), t))
-        if is_primitive_type(t):
+        if (
+            definition.kind != StructureDefinitionKind.PRIMITIVE
+            and is_primitive_type(t)
+        ):
             result.append(
                 (
                     f"_{format_identifier(definition, identifier, t)}",
