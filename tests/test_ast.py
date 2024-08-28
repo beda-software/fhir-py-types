@@ -71,6 +71,16 @@ def test_generates_class_for_flat_definition() -> None:
                         simple=1,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
+                    ast.AnnAssign(
+                        target=ast.Name(id="_property1"),
+                        annotation=ast.Subscript(
+                            value=ast.Name(id="Optional_"),
+                            slice=ast.Constant("Element"),
+                        ),
+                        value=ast.Constant(None),
+                        simple=1,
+                    ),
+                    ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
                 decorator_list=[],
                 type_params=[],
@@ -92,10 +102,10 @@ def test_generates_class_for_flat_definition() -> None:
         (
             [
                 StructureDefinition(
-                    id="TestResource",
-                    docstring="test resource description",
+                    id="date",
+                    docstring="date description",
                     type=[
-                        StructurePropertyType(code="str", required=True, isarray=False)
+                        StructurePropertyType(code="date", required=True, isarray=False)
                     ],
                     elements={},
                     kind=StructureDefinitionKind.PRIMITIVE,
@@ -103,10 +113,10 @@ def test_generates_class_for_flat_definition() -> None:
             ],
             [
                 ast.Assign(
-                    targets=[ast.Name("TestResource")],
-                    value=ast.Name("str"),
+                    targets=[ast.Name("date")],
+                    value=ast.Name("date"),
                 ),
-                ast.Expr(value=ast.Constant("test resource description")),
+                ast.Expr(value=ast.Constant("date description")),
             ],
         ),
     ],
@@ -166,6 +176,18 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                         target=ast.Name(id="property1"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"), slice=ast.Constant("str")
+                        ),
+                        simple=1,
+                        value=ast.Constant(None),
+                    ),
+                    ast.Expr(
+                        value=ast.Constant(value="nested test resource property 1")
+                    ),
+                    ast.AnnAssign(
+                        target=ast.Name(id="_property1"),
+                        annotation=ast.Subscript(
+                            value=ast.Name(id="Optional_"),
+                            slice=ast.Constant("Element"),
                         ),
                         simple=1,
                         value=ast.Constant(None),
@@ -314,6 +336,24 @@ def test_generates_annotations_according_to_structure_type(
                         else None,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
+                    ast.AnnAssign(
+                        target=ast.Name(id="_property1"),
+                        annotation=ast.Subscript(
+                            value=ast.Name(id="Optional_"),
+                            slice=ast.Subscript(
+                                value=ast.Name(id="List_"),
+                                slice=ast.Constant("Element"),
+                            ),
+                        )
+                        if isarray
+                        else ast.Subscript(
+                            value=ast.Name(id="Optional_"),
+                            slice=ast.Constant("Element"),
+                        ),
+                        simple=1,
+                        value=ast.Constant(None),
+                    ),
+                    ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
                 decorator_list=[],
                 type_params=[],
@@ -329,7 +369,7 @@ def test_generates_annotations_according_to_structure_type(
     )
 
 
-def test_unrolls_required_polymorphic_into_class_uion() -> None:
+def test_unrolls_required_polymorphic_into_class_union() -> None:
     assert_eq(
         [
             StructureDefinition(
@@ -386,10 +426,32 @@ def test_unrolls_required_polymorphic_into_class_uion() -> None:
                     ),
                     ast.Expr(value=ast.Constant(value="monotype property definition")),
                     ast.AnnAssign(
+                        target=ast.Name(id="_monotype"),
+                        annotation=ast.Subscript(
+                            value=ast.Name(id="Optional_"),
+                            slice=ast.Constant("Element"),
+                        ),
+                        simple=1,
+                        value=ast.Constant(None),
+                    ),
+                    ast.Expr(value=ast.Constant(value="monotype property definition")),
+                    ast.AnnAssign(
                         target=ast.Name(id="valueBoolean"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("boolean"),
+                        ),
+                        simple=1,
+                        value=ast.Constant(None),
+                    ),
+                    ast.Expr(
+                        value=ast.Constant(value="polymorphic property definition")
+                    ),
+                    ast.AnnAssign(
+                        target=ast.Name(id="_valueBoolean"),
+                        annotation=ast.Subscript(
+                            value=ast.Name(id="Optional_"),
+                            slice=ast.Constant("Element"),
                         ),
                         simple=1,
                         value=ast.Constant(None),
