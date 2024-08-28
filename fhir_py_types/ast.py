@@ -162,7 +162,7 @@ def type_annotate(
             ),
             ast.Expr(value=ast.Constant(definition.docstring)),
         ]
-        for (identifier_, type_) in list(zip_identifier_type(definition, identifier))
+        for (identifier_, type_) in zip_identifier_type(definition, identifier)
     )
 
 
