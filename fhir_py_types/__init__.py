@@ -46,3 +46,8 @@ class StructureDefinition:
 
 def is_polymorphic(definition: StructureDefinition) -> bool:
     return len(definition.type) > 1
+
+
+def is_primitive_type(property_type: StructurePropertyType) -> bool:
+    # All primitive types starts with lowercased letters
+    return property_type.code[0].islower()

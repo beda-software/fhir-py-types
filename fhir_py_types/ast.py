@@ -13,6 +13,7 @@ from fhir_py_types import (
     StructureDefinitionKind,
     StructurePropertyType,
     is_polymorphic,
+    is_primitive_type,
 )
 
 logger = logging.getLogger(__name__)
@@ -111,10 +112,24 @@ def remap_type(
 def zip_identifier_type(
     definition: StructureDefinition, identifier: str
 ) -> Iterable[tuple[str, StructurePropertyType]]:
-    return (
-        (format_identifier(definition, identifier, t), t)
-        for t in [remap_type(definition, t) for t in definition.type]
-    )
+    result = []
+
+    for t in [remap_type(definition, t) for t in definition.type]:
+        result.append((format_identifier(definition, identifier, t), t))
+        if is_primitive_type(t):
+            result.append(
+                (
+                    f"_{format_identifier(definition, identifier, t)}",
+                    StructurePropertyType(
+                        code="Element",
+                        target_profile=[],
+                        required=False,
+                        isarray=definition.type[0].isarray,
+                    ),
+                )
+            )
+
+    return result
 
 
 def make_assignment_statement(
@@ -133,7 +148,7 @@ def make_assignment_statement(
 
 
 def type_annotate(
-    defintion: StructureDefinition,
+    definition: StructureDefinition,
     identifier: str,
     form: Literal[AnnotationForm.Property, AnnotationForm.TypeAlias],
 ) -> Iterable[ast.stmt]:
@@ -145,9 +160,9 @@ def type_annotate(
                 form,
                 default=make_default_initializer(identifier_, type_),
             ),
-            ast.Expr(value=ast.Constant(defintion.docstring)),
+            ast.Expr(value=ast.Constant(definition.docstring)),
         ]
-        for (identifier_, type_) in zip_identifier_type(defintion, identifier)
+        for (identifier_, type_) in list(zip_identifier_type(definition, identifier))
     )
 
 
