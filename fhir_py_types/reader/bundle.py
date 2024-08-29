@@ -16,7 +16,7 @@ FHIR_TO_SYSTEM_TYPE_MAP = {
     "System.Time": "str",
     "System.Date": "str",
     "System.DateTime": "str",
-    "System.Decimal": "int",
+    "System.Decimal": "float",
     "System.Integer": "int",
 }
 
@@ -93,6 +93,7 @@ def parse_base_structure_definition(definition: dict[str, Any]) -> StructureDefi
 
     match kind:
         case StructureDefinitionKind.PRIMITIVE:
+            schemas = definition["differential"]["element"]
             structure_schema = next(
                 s for s in schemas if s["id"] == definition["type"] + ".value"
             )
