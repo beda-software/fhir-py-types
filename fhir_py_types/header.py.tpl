@@ -111,19 +111,20 @@ class NonPrimitiveBaseModel(BaseModel, extra=Extra.forbid, validate_assignment=T
 
             if isinstance(field_value, list):
                 result[field_name] = [
-                    fv.value if isinstance(fv, PrimitiveBaseModel) else fv
-                    for fv in field_value
-                ]
-                result[_field_name] = [
-                    nullable(fv.dict(*args, **kwargs))
-                    if isinstance(fv, PrimitiveBaseModel)
-                    else fv
+                    fv.value if isinstance(fv, PrimitiveBaseModel) else fv.dict(*args, **kwargs)
                     for fv in field_value
                 ]
                 if all(fv is None for fv in result[field_name]):
                     result.pop(field_name, None)
-                if all(fv is None for fv in result[_field_name]):
-                    result.pop(_field_name, None)
+                if any(isinstance(fv, PrimitiveBaseModel) for fv in field_value):
+                    result[_field_name] = [
+                        nullable(fv.dict(*args, **kwargs))
+                        if isinstance(fv, PrimitiveBaseModel)
+                        else fv
+                        for fv in field_value
+                    ]
+                    if all(fv is None for fv in result[_field_name]):
+                        result.pop(_field_name, None)
 
             else:
                 if isinstance(field_value, PrimitiveBaseModel):
