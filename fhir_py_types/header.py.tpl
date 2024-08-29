@@ -1,20 +1,67 @@
+from abc import ABC
+from inspect import isclass
+from typing import (
+    Annotated as Annotated_,
+)
 from typing import (
     List as List_,
-    Optional as Optional_,
-    Literal as Literal_,
-    Annotated as Annotated_,
-    get_origin,
-    get_args,
 )
-from pydantic import BaseModel, Field, Extra, validator, root_validator
-from inspect import isclass
+from typing import (
+    Literal as Literal_,
+)
+from typing import (
+    Optional as Optional_,
+)
+from typing import (
+    get_args,
+    get_origin,
+)
+
+from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 
-class PrimitiveBaseModel(BaseModel, extra=Extra.forbid, validate_assignment=True):
+class PrimitiveBaseModel(BaseModel, ABC, extra=Extra.forbid, validate_assignment=True):
     def dict(self, *args, **kwargs):
         result = super().dict(*args, **kwargs)
         result.pop("value", None)
         return result
+    
+    def __eq__(self, other) -> bool:
+        if isinstance(other, PrimitiveBaseModel):
+            return self.value == other.value
+        return self.value == other
+    
+    def __lt__(self, other) -> bool:
+        if isinstance(other, Str):
+            return self.value < other.value
+        return self.value < other
+
+    def __le__(self, other) -> bool:
+        if isinstance(other, Str):
+            return self.value <= other.value
+        return self.value <= other
+
+    def __gt__(self, other) -> bool:
+        if isinstance(other, Str):
+            return self.value > other.value
+        return self.value > other
+
+    def __ge__(self, other) -> bool:
+        if isinstance(other, Str):
+            return self.value >= other.value
+        return self.value >= other
+
+    def __str__(self):
+        return str(self.value)
+    
+    def __float__(self):
+        return float(self.value)
+    
+    def __int__(self):
+        return int(self.value)
+
+    def __bool__(self):
+        return bool(self.value)
 
 
 class NonPrimitiveBaseModel(BaseModel, extra=Extra.forbid, validate_assignment=True):
