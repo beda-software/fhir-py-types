@@ -86,14 +86,31 @@ def parse_property_kind(schema: dict) -> StructureDefinitionKind | None:
             return None
 
 
+def merge_schemas(snapshot: list, differential: list) -> list:
+    differential_mapping = {schema["path"]: schema for schema in differential}
+    result = []
+    for schema in snapshot:
+        if schema["path"] in differential_mapping:
+            result.append({**schema, **differential_mapping[schema["path"]]})
+        else:
+            result.append(schema)
+
+    return result
+
+
+def get_schemas(definition: dict[str, Any]) -> list[dict]:
+    return merge_schemas(
+        definition["snapshot"]["element"], definition["differential"]["element"]
+    )
+
+
 def parse_base_structure_definition(definition: dict[str, Any]) -> StructureDefinition:
     kind = StructureDefinitionKind.from_str(definition["kind"])
-    schemas = definition["snapshot"]["element"]
+    schemas = get_schemas(definition)
     base_schema = next(s for s in schemas if s["id"] == definition["type"])
 
     match kind:
         case StructureDefinitionKind.PRIMITIVE:
-            schemas = definition["differential"]["element"]
             structure_schema = next(
                 s for s in schemas if s["id"] == definition["type"] + ".value"
             )
@@ -128,9 +145,7 @@ def parse_base_structure_definition(definition: dict[str, Any]) -> StructureDefi
 
 def parse_structure_definition(definition: dict[str, Any]) -> StructureDefinition:
     structure_definition = parse_base_structure_definition(definition)
-    schemas = (
-        e for e in definition["snapshot"]["element"] if e["id"] != definition["type"]
-    )
+    schemas = (e for e in get_schemas(definition) if e["id"] != definition["type"])
 
     for schema in sorted(schemas, key=lambda s: len(s["path"])):
         subtree = structure_definition
