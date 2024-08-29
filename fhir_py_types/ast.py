@@ -72,12 +72,13 @@ def make_default_initializer(
     return default
 
 
+def uppercamelcase(s: str) -> str:
+    return s[:1].upper() + s[1:]
+
+
 def format_identifier(
     definition: StructureDefinition, identifier: str, type_: StructurePropertyType
 ) -> str:
-    def uppercamelcase(s: str) -> str:
-        return s[:1].upper() + s[1:]
-
     return (
         identifier + uppercamelcase(type_.code)
         if is_polymorphic(definition)
@@ -206,19 +207,20 @@ def define_class(definition: StructureDefinition) -> Iterable[ast.stmt | ast.exp
 def define_primitive_class(
     definition: StructureDefinition,
 ) -> Iterable[ast.stmt | ast.expr]:
-    factory_definition = StructureDefinition(
-        id=f"{definition.id}_factory",
+    cls_name = uppercamelcase(definition.id)
+    cls_definition = StructureDefinition(
+        id=cls_name,
         docstring=definition.docstring,
         type=definition.type,
         elements=definition.elements,
         kind=definition.kind,
     )
     return [
-        *define_class_object(factory_definition),
+        *define_class_object(cls_definition),
         ast.Assign(
             targets=[ast.Name(definition.id)],
             value=ast.BinOp(
-                left=ast.Name(id=f"{definition.id}_factory"),
+                left=ast.Name(id=cls_name),
                 op=ast.BitOr(),
                 right=ast.Name(id=definition.type[0].code),
             ),
