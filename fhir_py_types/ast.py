@@ -13,7 +13,6 @@ from fhir_py_types import (
     StructureDefinitionKind,
     StructurePropertyType,
     is_polymorphic,
-    is_primitive_type,
 )
 
 logger = logging.getLogger(__name__)
@@ -116,21 +115,6 @@ def zip_identifier_type(
 
     for t in [remap_type(definition, t) for t in definition.type]:
         result.append((format_identifier(definition, identifier, t), t))
-        if (
-            definition.kind != StructureDefinitionKind.PRIMITIVE
-            and is_primitive_type(t)
-        ):
-            result.append(
-                (
-                    f"_{format_identifier(definition, identifier, t)}",
-                    StructurePropertyType(
-                        code="Element",
-                        target_profile=[],
-                        required=False,
-                        isarray=definition.type[0].isarray,
-                    ),
-                )
-            )
 
     return result
 
@@ -187,7 +171,13 @@ def define_class_object(
     return [
         ast.ClassDef(
             definition.id,
-            bases=[ast.Name("BaseModel")],
+            bases=[
+                ast.Name(
+                    "PrimitiveBaseModel"
+                    if definition.kind == StructureDefinitionKind.PRIMITIVE
+                    else "NonPrimitiveBaseModel"
+                )
+            ],
             body=[
                 ast.Expr(value=ast.Constant(definition.docstring)),
                 *itertools.chain.from_iterable(
@@ -198,13 +188,7 @@ def define_class_object(
                 ),
             ],
             decorator_list=[],
-            keywords=[
-                ast.keyword(
-                    arg="extra",
-                    value=ast.Attribute(value=ast.Name("Extra"), attr="forbid"),
-                ),
-                ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
-            ],
+            keywords=[],
             type_params=[],
         ),
         ast.Call(
@@ -217,10 +201,6 @@ def define_class_object(
 
 def define_class(definition: StructureDefinition) -> Iterable[ast.stmt | ast.expr]:
     return define_class_object(definition)
-
-
-def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
-    return type_annotate(definition, definition.id, AnnotationForm.TypeAlias)
 
 
 def define_tagged_union(
@@ -296,11 +276,12 @@ def build_ast(
     for root in structure_definitions:
         for definition in iterate_definitions_tree(root):
             match definition.kind:
-                case StructureDefinitionKind.RESOURCE | StructureDefinitionKind.COMPLEX:
+                case (
+                    StructureDefinitionKind.RESOURCE
+                    | StructureDefinitionKind.COMPLEX
+                    | StructureDefinitionKind.PRIMITIVE
+                ):
                     typedefinitions.extend(define_class(definition))
-
-                case StructureDefinitionKind.PRIMITIVE:
-                    typedefinitions.extend(define_alias(definition))
 
                 case _:
                     logger.warning(
