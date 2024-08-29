@@ -203,6 +203,29 @@ def define_class(definition: StructureDefinition) -> Iterable[ast.stmt | ast.exp
     return define_class_object(definition)
 
 
+def define_primitive_class(
+    definition: StructureDefinition,
+) -> Iterable[ast.stmt | ast.expr]:
+    factory_definition = StructureDefinition(
+        id=f"{definition.id}_factory",
+        docstring=definition.docstring,
+        type=definition.type,
+        elements=definition.elements,
+        kind=definition.kind,
+    )
+    return [
+        *define_class_object(factory_definition),
+        ast.Assign(
+            targets=[ast.Name(definition.id)],
+            value=ast.BinOp(
+                left=ast.Name(id=f"{definition.id}_factory"),
+                op=ast.BitOr(),
+                right=ast.Name(id=definition.type[0].code),
+            ),
+        ),
+    ]
+
+
 def define_tagged_union(
     name: str, components: Iterable[StructureDefinition], distinct_by: str
 ) -> ast.stmt:
@@ -276,12 +299,11 @@ def build_ast(
     for root in structure_definitions:
         for definition in iterate_definitions_tree(root):
             match definition.kind:
-                case (
-                    StructureDefinitionKind.RESOURCE
-                    | StructureDefinitionKind.COMPLEX
-                    | StructureDefinitionKind.PRIMITIVE
-                ):
+                case StructureDefinitionKind.RESOURCE | StructureDefinitionKind.COMPLEX:
                     typedefinitions.extend(define_class(definition))
+
+                case StructureDefinitionKind.PRIMITIVE:
+                    typedefinitions.extend(define_primitive_class(definition))
 
                 case _:
                     logger.warning(

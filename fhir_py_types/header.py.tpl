@@ -6,6 +6,7 @@ from typing import (
     Union,
     get_args,
     get_origin,
+    Annotated as Annotated_,
     List as List_,
     Literal as Literal_,
     Optional as Optional_,
@@ -28,22 +29,22 @@ class PrimitiveBaseModel(BaseModel, ABC, extra=Extra.forbid, validate_assignment
         return self.value == other
 
     def __lt__(self, other) -> bool:
-        if isinstance(other, Str):
+        if isinstance(other, PrimitiveBaseModel):
             return self.value < other.value
         return self.value < other
 
     def __le__(self, other) -> bool:
-        if isinstance(other, Str):
+        if isinstance(other, PrimitiveBaseModel):
             return self.value <= other.value
         return self.value <= other
 
     def __gt__(self, other) -> bool:
-        if isinstance(other, Str):
+        if isinstance(other, PrimitiveBaseModel):
             return self.value > other.value
         return self.value > other
 
     def __ge__(self, other) -> bool:
-        if isinstance(other, Str):
+        if isinstance(other, PrimitiveBaseModel):
             return self.value >= other.value
         return self.value >= other
 

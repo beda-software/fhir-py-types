@@ -107,14 +107,23 @@ def get_schemas(definition: dict[str, Any]) -> list[dict]:
 def parse_base_structure_definition(definition: dict[str, Any]) -> StructureDefinition:
     kind = StructureDefinitionKind.from_str(definition["kind"])
     schemas = get_schemas(definition)
-    structure_schema = next(s for s in schemas if s["id"] == definition["type"])
+    base_schema = next(s for s in schemas if s["id"] == definition["type"])
+
+    match kind:
+        case StructureDefinitionKind.PRIMITIVE:
+            schemas = definition["differential"]["element"]
+            structure_schema = next(
+                s for s in schemas if s["id"] == definition["type"] + ".value"
+            )
+        case _:
+            structure_schema = base_schema
 
     match kind:
         case StructureDefinitionKind.RESOURCE:
             default_elements = {
                 "resourceType": StructureDefinition(
                     id=definition["type"],
-                    docstring=structure_schema["short"],
+                    docstring=base_schema["short"],
                     type=[
                         StructurePropertyType(
                             code=definition["type"], required=True, literal=True
@@ -129,10 +138,8 @@ def parse_base_structure_definition(definition: dict[str, Any]) -> StructureDefi
     return StructureDefinition(
         id=definition["id"],
         kind=kind,
-        docstring=structure_schema["definition"],
-        type=parse_property_type(structure_schema, kind)
-        if kind != StructureDefinitionKind.PRIMITIVE
-        else [],
+        docstring=base_schema["definition"],
+        type=parse_property_type(structure_schema, kind),
         elements=default_elements,
     )
 
