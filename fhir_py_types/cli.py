@@ -9,6 +9,7 @@ from fhir_py_types.reader.bundle import load_from_bundle
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+dir_path = os.path.dirname(os.path.realpath(__file__))
 
 
 def main() -> None:
@@ -38,15 +39,13 @@ def main() -> None:
             load_from_bundle(bundle) for bundle in args.from_bundles
         )
     )
+    with open(os.path.join(dir_path, "header.py.tpl")) as header_file:
+        header_lines = header_file.readlines()
 
     with open(os.path.abspath(args.outfile), "w") as resource_file:
         resource_file.writelines(
             [
-                "from typing import List as List_, Optional as Optional_, Literal as Literal_, Annotated as Annotated_\n",
-                "from {} import {} as BaseModel\n".format(
-                    *args.base_model.rsplit(".", 1)
-                ),
-                "from pydantic import Field, Extra\n",
+                *header_lines,
                 "\n\n",
                 "\n\n\n".join(
                     ast.unparse(ast.fix_missing_locations(tree)) for tree in ast_
