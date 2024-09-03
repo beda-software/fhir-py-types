@@ -75,7 +75,7 @@ def test_generates_class_for_flat_definition() -> None:
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                     ast.AnnAssign(
-                        target=ast.Name(id="property1_"),
+                        target=ast.Name(id="property1__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("Element"),
@@ -187,7 +187,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                         value=ast.Constant(value="nested test resource property 1")
                     ),
                     ast.AnnAssign(
-                        target=ast.Name(id="property1_"),
+                        target=ast.Name(id="property1__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("Element"),
@@ -340,7 +340,7 @@ def test_generates_annotations_according_to_structure_type(
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                     ast.AnnAssign(
-                        target=ast.Name(id="property1_"),
+                        target=ast.Name(id="property1__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Subscript(
@@ -429,7 +429,7 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
                     ),
                     ast.Expr(value=ast.Constant(value="monotype property definition")),
                     ast.AnnAssign(
-                        target=ast.Name(id="monotype_"),
+                        target=ast.Name(id="monotype__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("Element"),
@@ -451,7 +451,7 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
                         value=ast.Constant(value="polymorphic property definition")
                     ),
                     ast.AnnAssign(
-                        target=ast.Name(id="valueBoolean_"),
+                        target=ast.Name(id="valueBoolean__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("Element"),

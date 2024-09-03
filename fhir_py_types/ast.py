@@ -122,7 +122,7 @@ def zip_identifier_type(
         ):
             result.append(
                 (
-                    f"{name}_",
+                    f"{name}__ext",
                     StructurePropertyType(
                         code="Element",
                         target_profile=[],
