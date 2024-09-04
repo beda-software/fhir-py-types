@@ -7,6 +7,7 @@ class BaseModel(BaseModel_):
     class Config:
         extra = Extra.forbid
         validate_assignment = True
+        allow_population_by_field_name = True
     
     def dict(self, *args, **kwargs):
         by_alias = kwargs.pop('by_alias', True)
