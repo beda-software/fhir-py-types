@@ -11,6 +11,9 @@ from fhir_py_types import (
 from fhir_py_types.ast import build_ast
 
 
+EXPECTED_BASE_MODEL_CONFIG = []
+
+
 def assert_eq(
     definitions: Sequence[StructureDefinition], ast_tree: Sequence[ast.stmt | ast.expr]
 ) -> None:
