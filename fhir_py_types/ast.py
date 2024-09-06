@@ -192,9 +192,11 @@ def order_type_overriding_properties(
 def define_class_object(
     definition: StructureDefinition,
 ) -> Iterable[ast.stmt | ast.expr]:
-    bases: list[ast.expr] = [ast.Name("BaseModel")]
+    bases: list[ast.expr] = []
     if definition.kind == StructureDefinitionKind.RESOURCE:
-        bases.append(ast.Name("BaseResource"))
+        bases.append(ast.Name("AnyResource"))
+    # BaseModel should be the last, because it overrides `extra`
+    bases.append(ast.Name("BaseModel"))
 
     return [
         ast.ClassDef(

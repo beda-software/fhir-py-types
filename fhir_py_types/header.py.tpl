@@ -12,12 +12,10 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 
-class BaseResource(BaseModel_):
-    resourceType: str
-
-
-class AnyResource(BaseResource):
+class AnyResource(BaseModel_):
     model_config = ConfigDict(extra="allow")
+
+    resourceType: str
 
 
 class BaseModel(BaseModel_):
