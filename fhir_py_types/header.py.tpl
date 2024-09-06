@@ -4,6 +4,7 @@ from typing import List as List_, Optional as Optional_, Literal as Literal_
 from pydantic import PydanticDeprecatedSince20
 from pydantic import (
     BaseModel as BaseModel_,
+    ConfigDict,
     Field,
     Extra,
     field_validator,
@@ -20,11 +21,22 @@ class AnyResource(BaseModel_):
 
 
 class BaseModel(BaseModel_):
-    class Config:
-        extra = Extra.forbid
-        validate_assignment = True
-        populate_by_name = True
-        defer_build = True
+    model_config = ConfigDict(
+        # Extra attributes are disabled because fhir does not allow it
+        extra=Extra.forbid,
+
+        # Validation are applied while mutating the resource
+        validate_assignment=True,
+
+        # It's important for reserved keywords population in constructor (e.g. for_)
+        populate_by_name=True,
+
+        # Speed up initial load by lazy build
+        defer_build=True,
+
+        # It does not breaks anything, just for usage convinience
+        coerce_numbers_to_str=True
+    )
 
     def model_dump(self, *args, **kwargs):
         by_alias = kwargs.pop("by_alias", True)
