@@ -33,6 +33,7 @@ class StructurePropertyType:
     isarray: bool = False
     literal: bool = False
     target_profile: list[str] | None = None
+    alias: str | None = None
 
 
 @dataclass(frozen=True)
