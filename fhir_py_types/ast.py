@@ -79,11 +79,13 @@ def format_identifier(
     def uppercamelcase(s: str) -> str:
         return s[:1].upper() + s[1:]
 
-    return (
-        identifier + uppercamelcase(type_.code)
-        if is_polymorphic(definition)
-        else identifier
-    )
+    if is_polymorphic(definition):
+        # TODO: it's fast hack
+        if type_.code[0].islower():
+            return identifier + uppercamelcase(clear_primitive_id(type_.code))
+        return identifier + uppercamelcase(type_.code)
+
+    return identifier
 
 
 def remap_type(
@@ -94,8 +96,8 @@ def remap_type(
             case "Resource":
                 # Different contexts use 'Resource' type to refer to any
                 # resource differentiated by its 'resourceType' (tagged union).
-                # 'AnyResource' is not defined by the spec but rather
-                # generated as a union of all defined resource types.
+                # 'AnyResource' is defined in header as a special type
+                # that dynamically replaced with a right type in run-time
                 type_ = replace(type_, code="AnyResource")
 
     if is_polymorphic(definition):
@@ -105,6 +107,12 @@ def remap_type(
         # Future implementation might include optional properties
         # with a custom validator that will enforce single required property rule.
         type_ = replace(type_, required=False)
+
+    if is_primitive_type(type_):
+        # Primitive types defined from the small letter (like code)
+        # and it might overlap with model fields
+        # e.g. QuestionnaireItem has attribute code and linkId has type code
+        type_ = replace(type_, code=make_primitive_id(type_.code))
 
     return type_
 
@@ -116,9 +124,8 @@ def zip_identifier_type(
 
     for t in [remap_type(definition, t) for t in definition.type]:
         result.append((format_identifier(definition, identifier, t), t))
-        if (
-            definition.kind != StructureDefinitionKind.PRIMITIVE
-            and is_primitive_type(t)
+        if definition.kind != StructureDefinitionKind.PRIMITIVE and is_primitive_type(
+            t
         ):
             result.append(
                 (
@@ -201,11 +208,6 @@ def define_class_object(
             keywords=[],
             type_params=[],
         ),
-        ast.Call(
-            ast.Attribute(value=ast.Name(definition.id), attr="update_forward_refs"),
-            args=[],
-            keywords=[],
-        ),
     ]
 
 
@@ -214,48 +216,22 @@ def define_class(definition: StructureDefinition) -> Iterable[ast.stmt | ast.exp
 
 
 def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
-    return type_annotate(definition, definition.id, AnnotationForm.TypeAlias)
-
-
-def define_tagged_union(
-    name: str, components: Iterable[StructureDefinition], distinct_by: str
-) -> ast.stmt:
-    annotation = functools.reduce(
-        lambda acc, n: ast.BinOp(left=acc, right=n, op=ast.BitOr()),
-        (cast(ast.expr, ast.Name(d.id)) for d in components),
-    )
-
-    return ast.Assign(
-        targets=[ast.Name(name)],
-        value=ast.Subscript(
-            value=ast.Name("Annotated_"),
-            slice=ast.Tuple(
-                elts=[
-                    annotation,
-                    ast.Call(
-                        ast.Name("Field"),
-                        args=[ast.Constant(...)],
-                        keywords=[
-                            ast.keyword(
-                                arg="discriminator", value=ast.Constant(distinct_by)
-                            ),
-                        ],
-                    ),
-                ]
-            ),
-        ),
+    # Primitive types are renamed to another name to avoid overlapping with model fields
+    return type_annotate(
+        definition, make_primitive_id(definition.id), AnnotationForm.TypeAlias
     )
 
 
-def select_tagged_resources(
-    definitions: Iterable[StructureDefinition], key: str
-) -> Iterable[StructureDefinition]:
-    return (
-        definition
-        for definition in definitions
-        if definition.kind == StructureDefinitionKind.RESOURCE
-        and key in definition.elements
-    )
+def make_primitive_id(name: str) -> str:
+    if name in ("str", "int", "float", "bool"):
+        return name
+    return f"{name}Type"
+
+
+def clear_primitive_id(name: str) -> str:
+    if name.endswith("Type"):
+        return name[:-4]
+    return name
 
 
 def select_nested_definitions(
@@ -300,14 +276,6 @@ def build_ast(
                     logger.warning(
                         f"Unsupported definition {definition.id} of kind {definition.kind}, skipping"
                     )
-
-    resources = list(select_tagged_resources(structure_definitions, key="resourceType"))
-    if resources:
-        typedefinitions.append(
-            define_tagged_union(
-                name="AnyResource", components=resources, distinct_by="resourceType"
-            )
-        )
 
     return sorted(
         typedefinitions,
