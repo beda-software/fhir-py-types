@@ -198,13 +198,7 @@ def define_class_object(
                 ),
             ],
             decorator_list=[],
-            keywords=[
-                ast.keyword(
-                    arg="extra",
-                    value=ast.Attribute(value=ast.Name("Extra"), attr="forbid"),
-                ),
-                ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
-            ],
+            keywords=[],
             type_params=[],
         ),
         ast.Call(
