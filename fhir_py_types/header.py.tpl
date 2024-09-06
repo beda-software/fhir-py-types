@@ -6,24 +6,24 @@ from pydantic import (
     BaseModel as BaseModel_,
     ConfigDict,
     Field,
-    Extra,
     field_validator,
     ValidationError,
 )
 from pydantic_core import PydanticCustomError
 
 
-class AnyResource(BaseModel_):
-    class Config:
-        extra = Extra.allow
-
+class BaseResource(BaseModel_):
     resourceType: str
+
+
+class AnyResource(BaseResource):
+    model_config = ConfigDict(extra="allow")
 
 
 class BaseModel(BaseModel_):
     model_config = ConfigDict(
         # Extra attributes are disabled because fhir does not allow it
-        extra=Extra.forbid,
+        extra="forbid",
 
         # Validation are applied while mutating the resource
         validate_assignment=True,
