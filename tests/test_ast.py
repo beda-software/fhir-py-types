@@ -10,8 +10,6 @@ from fhir_py_types import (
 )
 from fhir_py_types.ast import build_ast
 
-EXPECTED_BASE_MODEL_CONFIG = []
-
 
 def assert_eq(
     definitions: Sequence[StructureDefinition], ast_tree: Sequence[ast.stmt | ast.expr]
@@ -56,7 +54,7 @@ def test_generates_class_for_flat_definition() -> None:
             ast.ClassDef(
                 name="TestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
@@ -163,7 +161,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             ast.ClassDef(
                 name="NestedTestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="nested resource definition")),
                     ast.AnnAssign(
@@ -196,7 +194,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             ast.ClassDef(
                 name="TestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
@@ -316,7 +314,7 @@ def test_generates_annotations_according_to_structure_type(
             ast.ClassDef(
                 name="TestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
@@ -406,7 +404,7 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
             ast.ClassDef(
                 name="TestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
