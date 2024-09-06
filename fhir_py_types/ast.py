@@ -1,12 +1,11 @@
 import ast
-import functools
 import itertools
 import keyword
 import logging
 from collections.abc import Iterable
 from dataclasses import replace
 from enum import Enum, auto
-from typing import Literal, cast
+from typing import Literal
 
 from fhir_py_types import (
     StructureDefinition,
@@ -193,10 +192,14 @@ def order_type_overriding_properties(
 def define_class_object(
     definition: StructureDefinition,
 ) -> Iterable[ast.stmt | ast.expr]:
+    bases: list[ast.expr] = [ast.Name("BaseModel")]
+    if definition.kind == StructureDefinitionKind.RESOURCE:
+        bases.append(ast.Name("BaseResource"))
+
     return [
         ast.ClassDef(
             definition.id,
-            bases=[ast.Name("BaseModel")],
+            bases=bases,
             body=[
                 ast.Expr(value=ast.Constant(definition.docstring)),
                 *itertools.chain.from_iterable(
