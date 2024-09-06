@@ -9,6 +9,7 @@ from fhir_py_types.reader.bundle import load_from_bundle
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+dir_path = os.path.dirname(os.path.realpath(__file__))
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -40,6 +41,8 @@ def main() -> None:
             load_from_bundle(bundle) for bundle in args.from_bundles
         )
     )
+    with open(os.path.join(dir_path, "header.py.tpl")) as header_file:
+        header_lines = header_file.readlines()
 
     with open(os.path.join(dir_path, "header.py.tpl")) as header_file:
         header_lines = header_file.readlines()

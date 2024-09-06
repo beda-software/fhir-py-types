@@ -10,8 +10,6 @@ from fhir_py_types import (
 )
 from fhir_py_types.ast import build_ast
 
-EXPECTED_BASE_MODEL_CONFIG = []
-
 
 def assert_eq(
     definitions: Sequence[StructureDefinition], ast_tree: Sequence[ast.stmt | ast.expr]
@@ -20,6 +18,17 @@ def assert_eq(
     expected = [ast.dump(t) for t in ast_tree]
 
     assert generated == expected
+
+
+def build_field_with_alias(identifier: str) -> ast.Call:
+    return ast.Call(
+        func=ast.Name(id="Field"),
+        args=[],
+        keywords=[
+            ast.keyword(arg="default", value=ast.Constant(value=None)),
+            ast.keyword(arg="alias", value=ast.Constant(value=identifier)),
+        ],
+    )
 
 
 def test_generates_empty_ast_from_empty_definitions() -> None:
@@ -56,7 +65,7 @@ def test_generates_class_for_flat_definition() -> None:
             ast.ClassDef(
                 name="TestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
@@ -66,12 +75,12 @@ def test_generates_class_for_flat_definition() -> None:
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                     ast.AnnAssign(
-                        target=ast.Name(id="_property1"),
+                        target=ast.Name(id="property1__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("Element"),
                         ),
-                        value=ast.Constant(None),
+                        value=build_field_with_alias("_property1"),
                         simple=1,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
@@ -156,7 +165,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             ast.ClassDef(
                 name="NestedTestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="nested resource definition")),
                     ast.AnnAssign(
@@ -171,13 +180,13 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                         value=ast.Constant(value="nested test resource property 1")
                     ),
                     ast.AnnAssign(
-                        target=ast.Name(id="_property1"),
+                        target=ast.Name(id="property1__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("Element"),
                         ),
                         simple=1,
-                        value=ast.Constant(None),
+                        value=build_field_with_alias("_property1"),
                     ),
                     ast.Expr(
                         value=ast.Constant(value="nested test resource property 1")
@@ -189,7 +198,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             ast.ClassDef(
                 name="TestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
@@ -295,7 +304,7 @@ def test_generates_annotations_according_to_structure_type(
             ast.ClassDef(
                 name="TestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
@@ -310,7 +319,7 @@ def test_generates_annotations_according_to_structure_type(
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                     ast.AnnAssign(
-                        target=ast.Name(id="_property1"),
+                        target=ast.Name(id="property1__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Subscript(
@@ -324,7 +333,7 @@ def test_generates_annotations_according_to_structure_type(
                             slice=ast.Constant("Element"),
                         ),
                         simple=1,
-                        value=ast.Constant(None),
+                        value=build_field_with_alias("_property1"),
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
@@ -378,7 +387,7 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
             ast.ClassDef(
                 name="TestResource",
                 bases=[ast.Name(id="BaseModel")],
-                keywords=EXPECTED_BASE_MODEL_CONFIG,
+                keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
@@ -392,13 +401,13 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
                     ),
                     ast.Expr(value=ast.Constant(value="monotype property definition")),
                     ast.AnnAssign(
-                        target=ast.Name(id="_monotype"),
+                        target=ast.Name(id="monotype__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("Element"),
                         ),
                         simple=1,
-                        value=ast.Constant(None),
+                        value=build_field_with_alias("_monotype"),
                     ),
                     ast.Expr(value=ast.Constant(value="monotype property definition")),
                     ast.AnnAssign(
@@ -414,13 +423,13 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
                         value=ast.Constant(value="polymorphic property definition")
                     ),
                     ast.AnnAssign(
-                        target=ast.Name(id="_valueBoolean"),
+                        target=ast.Name(id="valueBoolean__ext"),
                         annotation=ast.Subscript(
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("Element"),
                         ),
                         simple=1,
-                        value=ast.Constant(None),
+                        value=build_field_with_alias("_valueBoolean"),
                     ),
                     ast.Expr(
                         value=ast.Constant(value="polymorphic property definition")
