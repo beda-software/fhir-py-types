@@ -109,29 +109,31 @@ def _validate(value: Any_, index: int | None = None):
     # Custom validator for AnyResource fields
     if isinstance(value, AnyResource):
         try:
-            klass = globals().get(value.resourceType)
-        except PydanticCustomError as exc:
+            klass = globals()[value.resourceType]
+        except KeyError as exc:
             raise ValidationError.from_exception_data(
                 "ImportError",
                 [
                     {
-                        "loc": [index, "resourceType"],
+                        "loc": (index, "resourceType")
+                        if index is not None
+                        else ("resourceType",),
                         "type": "value_error",
-                        "msg": f"{value.resourceType} resource is not found",
                         "input": [value],
                         "ctx": {"error": f"{value.resourceType} resource is not found"},
                     }
                 ],
             ) from exc
 
-        if not issubclass(klass, BaseModel) or "resourceType" not in klass.__fields__:
+        if not issubclass(klass, BaseModel) or "resourceType" not in klass.model_fields:
             raise ValidationError.from_exception_data(
                 "ImportError",
                 [
                     {
-                        "loc": [index, "resourceType"],
+                        "loc": (index, "resourceType")
+                        if index is not None
+                        else ("resourceType",),
                         "type": "value_error",
-                        "msg": f"{value.resourceType} is not a resource",
                         "input": [value],
                         "ctx": {"error": f"{value.resourceType} is not a resource"},
                     }
@@ -143,9 +145,17 @@ def _validate(value: Any_, index: int | None = None):
         except ValidationError as exc:
             raise ValidationError.from_exception_data(
                 exc.title,
-                [{**error, "loc": [index, *error["loc"]]} for error in exc.errors()]
-                if index is not None
-                else exc.errors(),
+                [
+                    {
+                        "loc": (index, *error["loc"])
+                        if index is not None
+                        else error["loc"],
+                        "type": error["type"],
+                        "input": error["input"],
+                        "ctx": error["ctx"]
+                    }
+                    for error in exc.errors()
+                ],
             ) from exc
 
     return value
