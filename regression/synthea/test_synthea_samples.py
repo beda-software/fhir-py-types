@@ -23,4 +23,6 @@ def iterate_synthea_bundles() -> Generator[str]:
 @pytest.mark.parametrize("bundle_filepath", iterate_synthea_bundles())
 def test_can_parse_and_validate_samples_bundle(bundle_filepath: str) -> None:
     with open(bundle_filepath, "rb") as bundle_file:
-        Bundle.model_validate(json.loads(bundle_file.read()))
+        original = json.loads(bundle_file.read())
+        bundle = Bundle.model_validate(original)
+        assert bundle.model_dump() == original
