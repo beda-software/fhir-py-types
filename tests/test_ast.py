@@ -64,7 +64,7 @@ def test_generates_class_for_flat_definition() -> None:
         [
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id="BaseModel")],
+                bases=[ast.Name(id='AnyResource'), ast.Name(id="BaseModel")],
                 keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
@@ -136,8 +136,8 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                 ],
                 elements={
                     "complexproperty": StructureDefinition(
-                        id="NestedTestResource",
-                        docstring="nested resource definition",
+                        id="NestedComplex",
+                        docstring="nested complex definition",
                         type=[
                             StructurePropertyType(
                                 code="NestedTestResource", required=True, isarray=False
@@ -163,11 +163,11 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
         ],
         [
             ast.ClassDef(
-                name="NestedTestResource",
+                name="NestedComplex",
                 bases=[ast.Name(id="BaseModel")],
                 keywords=[],
                 body=[
-                    ast.Expr(value=ast.Constant(value="nested resource definition")),
+                    ast.Expr(value=ast.Constant(value="nested complex definition")),
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
                         annotation=ast.Subscript(
@@ -197,7 +197,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             ),
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id="BaseModel")],
+                bases=[ast.Name(id="AnyResource"), ast.Name(id="BaseModel")],
                 keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
@@ -206,7 +206,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                         annotation=ast.Constant("NestedTestResource"),
                         simple=1,
                     ),
-                    ast.Expr(value=ast.Constant(value="nested resource definition")),
+                    ast.Expr(value=ast.Constant(value="nested complex definition")),
                 ],
                 decorator_list=[],
                 type_params=[],
@@ -303,7 +303,7 @@ def test_generates_annotations_according_to_structure_type(
         [
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id="BaseModel")],
+                bases=[ast.Name(id='AnyResource'), ast.Name(id="BaseModel")],
                 keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
@@ -386,7 +386,7 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
         [
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id="BaseModel")],
+                bases=[ast.Name(id='AnyResource'),ast.Name(id="BaseModel")],
                 keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
