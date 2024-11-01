@@ -22,6 +22,7 @@ class AnyResource(BaseModel_):
     model_config = ConfigDict(extra="allow")
 
     resourceType: str
+    id: str | None = None
 
 
 class BaseModel(BaseModel_):
