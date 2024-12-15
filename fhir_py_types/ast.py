@@ -1,20 +1,19 @@
 import ast
-import functools
 import itertools
 import keyword
 import logging
-
+from collections.abc import Iterable
 from dataclasses import replace
 from enum import Enum, auto
-from typing import Iterable, List, Literal, Tuple, cast
+from typing import Literal
 
 from fhir_py_types import (
     StructureDefinition,
     StructureDefinitionKind,
     StructurePropertyType,
     is_polymorphic,
+    is_primitive_type,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ def make_type_annotation(
         case AnnotationForm.TypeAlias:
             annotation: ast.expr = ast.Name(type_.code)
         case _:
-            annotation = ast.Str(type_.code)
+            annotation = ast.Constant(type_.code)
 
     if type_.literal:
         annotation = ast.Subscript(value=ast.Name("Literal_"), slice=annotation)
@@ -46,52 +45,60 @@ def make_type_annotation(
     return annotation
 
 
-def make_default_initializer(identifier: str, type_: StructurePropertyType):
-    default_value = ast.Constant(None)
-    keywords: List[ast.keyword] = []
+
+def make_default_initializer(
+    identifier: str, type_: StructurePropertyType
+) -> ast.expr | None:
+    keywords: list[ast.keyword] = []
+    
     if type_.isarray and not type_.required:
         keywords.append(ast.keyword(arg="default_factory", value=ast.Name("list")))
     else:
         if type_.required:
-            default_value = ast.Ellipsis()
+            default_value = ast.Constant(...)
         elif type_.literal:
-            default_value = ast.Str(type_.code)
+            default_value = ast.Constant(type_.code)
         else:
             default_value = ast.Constant(None)
         keywords.append(ast.keyword(arg="default", value=default_value))
-    if keyword.iskeyword(identifier):
+    if keyword.iskeyword(identifier) or type_.alias:
         keywords.append(
-            ast.keyword(arg="alias", value=ast.Constant(identifier)),
+            ast.keyword(arg="alias", value=ast.Constant(type_.alias or identifier)),
         )
     default = ast.Call(
             ast.Name("Field"),
             args=[],
             keywords=keywords,
         )
-
+    
     return default
 
 
 def format_identifier(
     definition: StructureDefinition, identifier: str, type_: StructurePropertyType
 ) -> str:
-    uppercamelcase = lambda s: s[:1].upper() + s[1:]
+    def uppercamelcase(s: str) -> str:
+        return s[:1].upper() + s[1:]
 
-    return (
-        identifier + uppercamelcase(type_.code)
-        if is_polymorphic(definition)
-        else identifier
-    )
+    if is_polymorphic(definition):
+        # TODO(Vadim): it's fast hack  # noqa: TD003
+        if type_.code[0].islower():
+            return identifier + uppercamelcase(clear_primitive_id(type_.code))
+        return identifier + uppercamelcase(type_.code)
+
+    return identifier
 
 
-def remap_type(definition: StructureDefinition, type_: StructurePropertyType):
+def remap_type(
+    definition: StructureDefinition, type_: StructurePropertyType
+) -> StructurePropertyType:
     if not type_.literal:
         match type_.code:
             case "Resource":
                 # Different contexts use 'Resource' type to refer to any
                 # resource differentiated by its 'resourceType' (tagged union).
-                # 'AnyResource' is not defined by the spec but rather
-                # generated as a union of all defined resource types.
+                # 'AnyResource' is defined in header as a special type
+                # that dynamically replaced with a right type in run-time
                 type_ = replace(type_, code="AnyResource")
 
     if is_polymorphic(definition):
@@ -102,16 +109,40 @@ def remap_type(definition: StructureDefinition, type_: StructurePropertyType):
         # with a custom validator that will enforce single required property rule.
         type_ = replace(type_, required=False)
 
+    if is_primitive_type(type_):
+        # Primitive types defined from the small letter (like code)
+        # and it might overlap with model fields
+        # e.g. QuestionnaireItem has attribute code and linkId has type code
+        type_ = replace(type_, code=make_primitive_id(type_.code))
+
     return type_
 
 
 def zip_identifier_type(
     definition: StructureDefinition, identifier: str
-) -> Iterable[Tuple[str, StructurePropertyType]]:
-    return (
-        (format_identifier(definition, identifier, t), t)
-        for t in [remap_type(definition, t) for t in definition.type]
-    )
+) -> Iterable[tuple[str, StructurePropertyType]]:
+    result = []
+
+    for t in [remap_type(definition, t) for t in definition.type]:
+        name = format_identifier(definition, identifier, t)
+        result.append((name, t))
+        if definition.kind != StructureDefinitionKind.PRIMITIVE and is_primitive_type(
+            t
+        ):
+            result.append(
+                (
+                    f"{name}__ext",
+                    StructurePropertyType(
+                        code="Element",
+                        target_profile=[],
+                        required=False,
+                        isarray=definition.type[0].isarray,
+                        alias=f"_{name}"
+                    ),
+                )
+            )
+
+    return result
 
 
 def make_assignment_statement(
@@ -130,7 +161,7 @@ def make_assignment_statement(
 
 
 def type_annotate(
-    defintion: StructureDefinition,
+    definition: StructureDefinition,
     identifier: str,
     form: Literal[AnnotationForm.Property, AnnotationForm.TypeAlias],
 ) -> Iterable[ast.stmt]:
@@ -142,15 +173,15 @@ def type_annotate(
                 form,
                 default=make_default_initializer(identifier_, type_),
             ),
-            ast.Expr(value=ast.Str(defintion.docstring)),
+            ast.Expr(value=ast.Constant(definition.docstring)),
         ]
-        for (identifier_, type_) in zip_identifier_type(defintion, identifier)
+        for (identifier_, type_) in zip_identifier_type(definition, identifier)
     )
 
 
 def order_type_overriding_properties(
-    properties_definition: dict[str, StructureDefinition]
-) -> Iterable[Tuple[str, StructureDefinition]]:
+    properties_definition: dict[str, StructureDefinition],
+) -> Iterable[tuple[str, StructureDefinition]]:
     property_types = {
         t.code for definition in properties_definition.values() for t in definition.type
     }
@@ -161,26 +192,20 @@ def order_type_overriding_properties(
 
 
 def define_class_object(
-    definition: StructureDefinition, base="BaseModel"
+    definition: StructureDefinition,
 ) -> Iterable[ast.stmt | ast.expr]:
-    match base:
-        case "BaseModel":
-            base_class_kwargs: Iterable[ast.keyword] = [
-                ast.keyword(
-                    arg="extra",
-                    value=ast.Attribute(value=ast.Name("Extra"), attr="forbid"),
-                ),
-                ast.keyword(arg="validate_assignment", value=ast.Constant(True)),
-            ]
-        case _:
-            base_class_kwargs = []
+    bases: list[ast.expr] = []
+    if definition.kind == StructureDefinitionKind.RESOURCE:
+        bases.append(ast.Name("AnyResource"))
+    # BaseModel should be the last, because it overrides `extra`
+    bases.append(ast.Name("BaseModel"))
 
     return [
         ast.ClassDef(
             definition.id,
-            bases=[ast.Name(base)],
+            bases=bases,
             body=[
-                ast.Expr(value=ast.Str(definition.docstring)),
+                ast.Expr(value=ast.Constant(definition.docstring)),
                 *itertools.chain.from_iterable(
                     type_annotate(property, identifier, AnnotationForm.Property)
                     for identifier, property in order_type_overriding_properties(
@@ -189,65 +214,33 @@ def define_class_object(
                 ),
             ],
             decorator_list=[],
-            keywords=base_class_kwargs,
-        ),
-        ast.Call(
-            ast.Attribute(value=ast.Name(definition.id), attr="update_forward_refs"),
-            args=[],
             keywords=[],
+            type_params=[],
         ),
     ]
 
 
-def define_class(
-    definition: StructureDefinition, base="BaseModel"
-) -> Iterable[ast.stmt | ast.expr]:
-    return define_class_object(definition, base=base)
+def define_class(definition: StructureDefinition) -> Iterable[ast.stmt | ast.expr]:
+    return define_class_object(definition)
 
 
 def define_alias(definition: StructureDefinition) -> Iterable[ast.stmt]:
-    return type_annotate(definition, definition.id, AnnotationForm.TypeAlias)
-
-
-def define_tagged_union(
-    name: str, components: Iterable[StructureDefinition], distinct_by: str
-) -> ast.stmt:
-    annotation = functools.reduce(
-        lambda acc, n: ast.BinOp(left=acc, right=n, op=ast.BitOr()),
-        (cast(ast.expr, ast.Name(d.id)) for d in components),
-    )
-
-    return ast.Assign(
-        targets=[ast.Name(name)],
-        value=ast.Subscript(
-            value=ast.Name("Annotated_"),
-            slice=ast.Tuple(
-                elts=[
-                    annotation,
-                    ast.Call(
-                        ast.Name("Field"),
-                        args=[ast.Constant(...)],
-                        keywords=[
-                            ast.keyword(
-                                arg="discriminator", value=ast.Constant(distinct_by)
-                            ),
-                        ],
-                    ),
-                ]
-            ),
-        ),
+    # Primitive types are renamed to another name to avoid overlapping with model fields
+    return type_annotate(
+        definition, make_primitive_id(definition.id), AnnotationForm.TypeAlias
     )
 
 
-def select_tagged_resources(
-    definitions: Iterable[StructureDefinition], key: str
-) -> Iterable[StructureDefinition]:
-    return (
-        definition
-        for definition in definitions
-        if definition.kind == StructureDefinitionKind.RESOURCE
-        and key in definition.elements
-    )
+def make_primitive_id(name: str) -> str:
+    if name in ("str", "int", "float", "bool"):
+        return name
+    return f"{name}Type"
+
+
+def clear_primitive_id(name: str) -> str:
+    if name.endswith("Type"):
+        return name[:-4]
+    return name
 
 
 def select_nested_definitions(
@@ -277,7 +270,7 @@ def build_ast(
     structure_definitions: Iterable[StructureDefinition],
 ) -> Iterable[ast.stmt | ast.expr]:
     structure_definitions = list(structure_definitions)
-    typedefinitions: List[ast.stmt | ast.expr] = []
+    typedefinitions: list[ast.stmt | ast.expr] = []
 
     for root in structure_definitions:
         for definition in iterate_definitions_tree(root):
@@ -290,18 +283,8 @@ def build_ast(
 
                 case _:
                     logger.warning(
-                        "Unsupported definition {} of kind {}, skipping".format(
-                            definition.id, definition.kind
-                        )
+                        f"Unsupported definition {definition.id} of kind {definition.kind}, skipping"
                     )
-
-    resources = list(select_tagged_resources(structure_definitions, key="resourceType"))
-    if resources:
-        typedefinitions.append(
-            define_tagged_union(
-                name="AnyResource", components=resources, distinct_by="resourceType"
-            )
-        )
 
     return sorted(
         typedefinitions,

@@ -1,0 +1,4 @@
+# Visit https://beta.ruff.rs/docs/rules/ for details
+target-version = "py312"
+lint.select = ["E", "F", "N", "UP", "ANN", "B", "C4", "PT", "TD", "I001"]
+lint.ignore = ["E501"]

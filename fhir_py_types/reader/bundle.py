@@ -1,8 +1,8 @@
 import json
 import logging
 import os
-
-from typing import Any, Iterable, List, Optional, Tuple
+from collections.abc import Iterable
+from typing import Any
 
 from fhir_py_types import (
     StructureDefinition,
@@ -13,10 +13,10 @@ from fhir_py_types import (
 FHIR_TO_SYSTEM_TYPE_MAP = {
     "System.String": "str",
     "System.Boolean": "bool",
-    "System.Time": "time",
-    "System.Date": "date",
-    "System.DateTime": "datetime",
-    "System.Decimal": "int",
+    "System.Time": "str",
+    "System.Date": "str",
+    "System.DateTime": "str",
+    "System.Decimal": "float",
     "System.Integer": "int",
 }
 
@@ -31,7 +31,7 @@ def parse_type_identifier(type_: str) -> str:
     return FHIR_TO_SYSTEM_TYPE_MAP.get(code, code)
 
 
-def parse_target_profile(target_profile: List[str]) -> List[str]:
+def parse_target_profile(target_profile: list[str]) -> list[str]:
     profiles = [p.split("/")[-2:] for p in target_profile]
     if any(type_ != "StructureDefinition" for type_, _ in profiles):
         raise ValueError(f"Unknown target profile type: {target_profile}")
@@ -39,14 +39,15 @@ def parse_target_profile(target_profile: List[str]) -> List[str]:
 
 
 def parse_resource_name(path: str) -> str:
-    uppercamelcase = lambda s: s[:1].upper() + s[1:]
+    def uppercamelcase(s: str) -> str:
+        return s[:1].upper() + s[1:]
 
     return "".join(uppercamelcase(p) for p in path.removeprefix("#").split("."))
 
 
 def unwrap_schema_type(
-    schema: dict, kind: Optional[StructureDefinitionKind]
-) -> Iterable[Tuple[str, List[str]]]:
+    schema: dict, kind: StructureDefinitionKind | None
+) -> Iterable[tuple[str, list[str]]]:
     match kind:
         case StructureDefinitionKind.COMPLEX | StructureDefinitionKind.RESOURCE:
             return [(parse_resource_name(schema["base"]["path"]), [])]
@@ -58,8 +59,8 @@ def unwrap_schema_type(
 
 
 def parse_property_type(
-    schema: dict, kind: Optional[StructureDefinitionKind]
-) -> List[StructurePropertyType]:
+    schema: dict, kind: StructureDefinitionKind | None
+) -> list[StructurePropertyType]:
     return [
         StructurePropertyType(
             code=parse_type_identifier(type_),
@@ -77,7 +78,7 @@ def parse_property_key(schema: dict) -> str:
     return property_key.removesuffix("[x]")
 
 
-def parse_property_kind(schema: dict):
+def parse_property_kind(schema: dict) -> StructureDefinitionKind | None:
     match schema.get("type"):
         case [{"code": "BackboneElement"}] | [{"code": "Element"}]:
             return StructureDefinitionKind.COMPLEX
@@ -92,6 +93,7 @@ def parse_base_structure_definition(definition: dict[str, Any]) -> StructureDefi
 
     match kind:
         case StructureDefinitionKind.PRIMITIVE:
+            schemas = definition["differential"]["element"]
             structure_schema = next(
                 s for s in schemas if s["id"] == definition["type"] + ".value"
             )
@@ -149,7 +151,9 @@ def parse_structure_definition(definition: dict[str, Any]) -> StructureDefinitio
     return structure_definition
 
 
-def select_structure_definition_resources(bundle: DefinitionsBundle):
+def select_structure_definition_resources(
+    bundle: DefinitionsBundle,
+) -> Iterable[dict[str, Any]]:
     return (
         e["resource"]
         for e in bundle["entry"]
