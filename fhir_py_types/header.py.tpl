@@ -47,16 +47,46 @@ class BaseModel(BaseModel_):
         exclude: IncEx = None,
         context: Any_ | None = None,
         by_alias: bool = True,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
+        exclude_unset: bool = True,
+        exclude_defaults: bool = True,
         exclude_none: bool = True,
         round_trip: bool = False,
         warnings: bool | Literal_["none", "warn", "error"] = True,
         serialize_as_any: bool = False,
     ):
-        # Override default parameters for by_alias and exclude_none preserving function declaration
+        # Override default parameters for by_alias and exclude_* preserving function declaration
         return super().model_dump(
             mode=mode,
+            include=include,
+            exclude=exclude,
+            context=context,
+            by_alias=by_alias,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
+            round_trip=round_trip,
+            warnings=warnings,
+            serialize_as_any=serialize_as_any,
+        )
+
+    def model_dump_json(
+        self,
+        *,
+        indent: int | None = None,
+        include: IncEx | None = None,
+        exclude: IncEx | None = None,
+        context: Any_ | None = None,
+        by_alias: bool = True,
+        exclude_unset: bool = True,
+        exclude_defaults: bool = True,
+        exclude_none: bool = True,
+        round_trip: bool = False,
+        warnings: bool | Literal_['none', 'warn', 'error'] = True,
+        serialize_as_any: bool = False,
+    ) -> str:
+        # Override default parameters for by_alias and exclude_* preserving function declaration
+        return super().model_dump_json(
+            indent=indent,
             include=include,
             exclude=exclude,
             context=context,

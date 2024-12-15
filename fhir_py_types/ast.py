@@ -39,36 +39,35 @@ def make_type_annotation(
     if type_.isarray:
         annotation = ast.Subscript(value=ast.Name("List_"), slice=annotation)
 
-    if not type_.required and form != AnnotationForm.TypeAlias:
+    if not type_.required and form != AnnotationForm.TypeAlias and not type_.isarray:
         annotation = ast.Subscript(value=ast.Name("Optional_"), slice=annotation)
 
     return annotation
 
 
+
 def make_default_initializer(
     identifier: str, type_: StructurePropertyType
 ) -> ast.expr | None:
-    default: ast.expr | None = None
-
-    if keyword.iskeyword(identifier) or type_.alias:
-        default = ast.Call(
-            ast.Name("Field"),
-            args=[],
-            keywords=[
-                *(
-                    [ast.keyword(arg="default", value=ast.Constant(None))]
-                    if not type_.required
-                    else []
-                ),
-                ast.keyword(arg="alias", value=ast.Constant(type_.alias or identifier)),
-            ],
-        )
+    keywords: list[ast.keyword] = []
+    
+    if type_.isarray and not type_.required:
+        keywords.append(ast.keyword(arg="default_factory", value=ast.Name("list")))
     else:
         if not type_.required:
-            default = ast.Constant(None)
-        elif type_.literal and not type_.isarray:
-            default = ast.Constant(type_.code)
-
+            keywords.append(ast.keyword(arg="default", value=ast.Constant(None)))
+        elif type_.literal:
+            keywords.append(ast.keyword(arg="default", value=ast.Constant(type_.code)))
+    if keyword.iskeyword(identifier) or type_.alias:
+        keywords.append(
+            ast.keyword(arg="alias", value=ast.Constant(type_.alias or identifier)),
+        )
+    default = ast.Call(
+            ast.Name("Field"),
+            args=[],
+            keywords=keywords,
+        )
+    
     return default
 
 
