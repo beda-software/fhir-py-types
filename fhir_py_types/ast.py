@@ -54,13 +54,10 @@ def make_default_initializer(
     if type_.isarray and not type_.required:
         keywords.append(ast.keyword(arg="default_factory", value=ast.Name("list")))
     else:
-        if type_.required:
-            default_value = ast.Constant(...)
+        if not type_.required:
+            keywords.append(ast.keyword(arg="default", value=ast.Constant(None)))
         elif type_.literal:
-            default_value = ast.Constant(type_.code)
-        else:
-            default_value = ast.Constant(None)
-        keywords.append(ast.keyword(arg="default", value=default_value))
+            keywords.append(ast.keyword(arg="default", value=ast.Constant(type_.code)))
     if keyword.iskeyword(identifier) or type_.alias:
         keywords.append(
             ast.keyword(arg="alias", value=ast.Constant(type_.alias or identifier)),
