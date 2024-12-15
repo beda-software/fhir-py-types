@@ -3,6 +3,7 @@ from typing import List as List_, Optional as Optional_, Literal as Literal_, An
 from pydantic import BaseModel as BaseModel_, Field, Extra
 
 
+
 class BaseModel(BaseModel_):
     class Config:
         extra = Extra.forbid
