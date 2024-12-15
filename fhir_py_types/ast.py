@@ -79,7 +79,7 @@ def format_identifier(
         return s[:1].upper() + s[1:]
 
     if is_polymorphic(definition):
-        # TODO: it's fast hack
+        # TODO(Vadim): it's fast hack  # noqa: TD003
         if type_.code[0].islower():
             return identifier + uppercamelcase(clear_primitive_id(type_.code))
         return identifier + uppercamelcase(type_.code)
@@ -122,7 +122,8 @@ def zip_identifier_type(
     result = []
 
     for t in [remap_type(definition, t) for t in definition.type]:
-        result.append((format_identifier(definition, identifier, t), t))
+        name = format_identifier(definition, identifier, t)
+        result.append((name, t))
         if definition.kind != StructureDefinitionKind.PRIMITIVE and is_primitive_type(
             t
         ):
