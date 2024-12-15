@@ -50,7 +50,7 @@ def make_default_initializer(
 ) -> ast.expr | None:
     default: ast.expr | None = None
 
-    if keyword.iskeyword(identifier):
+    if keyword.iskeyword(identifier) or type_.alias:
         default = ast.Call(
             ast.Name("Field"),
             args=[],
@@ -60,7 +60,7 @@ def make_default_initializer(
                     if not type_.required
                     else []
                 ),
-                ast.keyword(arg="alias", value=ast.Constant(identifier)),
+                ast.keyword(arg="alias", value=ast.Constant(type_.alias or identifier)),
             ],
         )
     else:
@@ -128,12 +128,13 @@ def zip_identifier_type(
         ):
             result.append(
                 (
-                    f"_{format_identifier(definition, identifier, t)}",
+                    f"{name}__ext",
                     StructurePropertyType(
                         code="Element",
                         target_profile=[],
                         required=False,
                         isarray=definition.type[0].isarray,
+                        alias=f"_{name}"
                     ),
                 )
             )

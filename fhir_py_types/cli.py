@@ -40,7 +40,6 @@ def main() -> None:
             load_from_bundle(bundle) for bundle in args.from_bundles
         )
     )
-
     with open(os.path.join(dir_path, "header.py.tpl")) as header_file:
         header_lines = header_file.readlines()
 

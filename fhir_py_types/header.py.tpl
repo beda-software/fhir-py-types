@@ -24,6 +24,7 @@ class AnyResource(BaseModel_):
     resourceType: str
 
 
+
 class BaseModel(BaseModel_):
     model_config = ConfigDict(
         # Extra attributes are disabled because fhir does not allow it
