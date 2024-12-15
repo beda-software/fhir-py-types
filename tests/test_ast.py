@@ -14,21 +14,10 @@ from fhir_py_types.ast import build_ast
 def assert_eq(
     definitions: Sequence[StructureDefinition], ast_tree: Sequence[ast.stmt | ast.expr]
 ) -> None:
-    generated = [ast.dump(t) for t in build_ast(definitions)]
-    expected = [ast.dump(t) for t in ast_tree]
+    generated = [ast.dump(t, indent=1) for t in build_ast(definitions)]
+    expected = [ast.dump(t, indent=1) for t in ast_tree]
 
     assert generated == expected
-
-
-def build_field_with_alias(identifier: str) -> ast.Call:
-    return ast.Call(
-        func=ast.Name(id="Field"),
-        args=[],
-        keywords=[
-            ast.keyword(arg="default", value=ast.Constant(value=None)),
-            ast.keyword(arg="alias", value=ast.Constant(value=identifier)),
-        ],
-    )
 
 
 def test_generates_empty_ast_from_empty_definitions() -> None:
@@ -64,13 +53,14 @@ def test_generates_class_for_flat_definition() -> None:
         [
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id='AnyResource'), ast.Name(id="BaseModel")],
+                bases=[ast.Name(id="AnyResource"), ast.Name(id="BaseModel")],
                 keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
                     ast.AnnAssign(
                         target=ast.Name(id="property1"),
                         annotation=ast.Constant("str"),
+                        value=ast.Call(func=ast.Name(id="Field"), args=[], keywords=[]),
                         simple=1,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
@@ -80,7 +70,18 @@ def test_generates_class_for_flat_definition() -> None:
                             value=ast.Name(id="Optional_"),
                             slice=ast.Constant("Element"),
                         ),
-                        value=build_field_with_alias("_property1"),
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default", value=ast.Constant(value=None)
+                                ),
+                                ast.keyword(
+                                    arg="alias", value=ast.Constant(value="_property1")
+                                ),
+                            ],
+                        ),
                         simple=1,
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
@@ -174,7 +175,15 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                             value=ast.Name(id="Optional_"), slice=ast.Constant("str")
                         ),
                         simple=1,
-                        value=ast.Constant(None),
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default", value=ast.Constant(value=None)
+                                )
+                            ],
+                        ),
                     ),
                     ast.Expr(
                         value=ast.Constant(value="nested test resource property 1")
@@ -186,7 +195,19 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                             slice=ast.Constant("Element"),
                         ),
                         simple=1,
-                        value=build_field_with_alias("_property1"),
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default",
+                                    value=ast.Constant(value=None),
+                                ),
+                                ast.keyword(
+                                    arg="alias", value=ast.Constant(value="_property1")
+                                ),
+                            ],
+                        ),
                     ),
                     ast.Expr(
                         value=ast.Constant(value="nested test resource property 1")
@@ -205,6 +226,7 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
                         target=ast.Name(id="complexproperty"),
                         annotation=ast.Constant("NestedTestResource"),
                         simple=1,
+                        value=ast.Call(func=ast.Name(id="Field"), args=[], keywords=[]),
                     ),
                     ast.Expr(value=ast.Constant(value="nested complex definition")),
                 ],
@@ -235,10 +257,8 @@ def test_generates_multiple_classes_for_compound_definition() -> None:
             True,
             False,
             ast.Subscript(
-                value=ast.Name(id="Optional_"),
-                slice=ast.Subscript(
-                    value=ast.Name(id="List_"), slice=ast.Constant("str")
-                ),
+                value=ast.Name(id="List_"),
+                slice=ast.Constant("str"),
             ),
         ),
         (
@@ -303,7 +323,7 @@ def test_generates_annotations_according_to_structure_type(
         [
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id='AnyResource'), ast.Name(id="BaseModel")],
+                bases=[ast.Name(id="AnyResource"), ast.Name(id="BaseModel")],
                 keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
@@ -311,21 +331,46 @@ def test_generates_annotations_according_to_structure_type(
                         target=ast.Name(id="property1"),
                         annotation=expected_annotation,
                         simple=1,
-                        value=ast.Constant(None)
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default_factory", value=ast.Name(id="list")
+                                ),
+                            ],
+                        )
+                        if isarray and not required
+                        else ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default", value=ast.Constant(value=None)
+                                ),
+                            ],
+                        )
                         if not required
-                        else ast.Constant("str")
+                        else ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(arg="default", value=ast.Constant("str")),
+                            ],
+                        )
                         if literal
-                        else None,
+                        else ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[],
+                        ),
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                     ast.AnnAssign(
                         target=ast.Name(id="property1__ext"),
                         annotation=ast.Subscript(
-                            value=ast.Name(id="Optional_"),
-                            slice=ast.Subscript(
-                                value=ast.Name(id="List_"),
-                                slice=ast.Constant("Element"),
-                            ),
+                            value=ast.Name(id="List_"),
+                            slice=ast.Constant(value="Element"),
                         )
                         if isarray
                         else ast.Subscript(
@@ -333,7 +378,30 @@ def test_generates_annotations_according_to_structure_type(
                             slice=ast.Constant("Element"),
                         ),
                         simple=1,
-                        value=build_field_with_alias("_property1"),
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                *(
+                                    [
+                                        ast.keyword(
+                                            arg="default_factory",
+                                            value=ast.Name(id="list"),
+                                        )
+                                    ]
+                                    if isarray
+                                    else [
+                                        ast.keyword(
+                                            arg="default",
+                                            value=ast.Constant(value=None),
+                                        ),
+                                    ]
+                                ),
+                                ast.keyword(
+                                    arg="alias", value=ast.Constant(value="_property1")
+                                ),
+                            ],
+                        ),
                     ),
                     ast.Expr(value=ast.Constant(value="test resource property 1")),
                 ],
@@ -386,7 +454,7 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
         [
             ast.ClassDef(
                 name="TestResource",
-                bases=[ast.Name(id='AnyResource'),ast.Name(id="BaseModel")],
+                bases=[ast.Name(id="AnyResource"), ast.Name(id="BaseModel")],
                 keywords=[],
                 body=[
                     ast.Expr(value=ast.Constant(value="test resource description")),
@@ -397,7 +465,15 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
                             slice=ast.Constant("booleanType"),
                         ),
                         simple=1,
-                        value=ast.Constant(None),
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default", value=ast.Constant(value=None)
+                                )
+                            ],
+                        ),
                     ),
                     ast.Expr(value=ast.Constant(value="monotype property definition")),
                     ast.AnnAssign(
@@ -407,7 +483,18 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
                             slice=ast.Constant("Element"),
                         ),
                         simple=1,
-                        value=build_field_with_alias("_monotype"),
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default", value=ast.Constant(value=None)
+                                ),
+                                ast.keyword(
+                                    arg="alias", value=ast.Constant(value="_monotype")
+                                ),
+                            ],
+                        ),
                     ),
                     ast.Expr(value=ast.Constant(value="monotype property definition")),
                     ast.AnnAssign(
@@ -417,7 +504,15 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
                             slice=ast.Constant("booleanType"),
                         ),
                         simple=1,
-                        value=ast.Constant(None),
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default", value=ast.Constant(value=None)
+                                ),
+                            ],
+                        ),
                     ),
                     ast.Expr(
                         value=ast.Constant(value="polymorphic property definition")
@@ -429,7 +524,19 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
                             slice=ast.Constant("Element"),
                         ),
                         simple=1,
-                        value=build_field_with_alias("_valueBoolean"),
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default", value=ast.Constant(value=None)
+                                ),
+                                ast.keyword(
+                                    arg="alias",
+                                    value=ast.Constant(value="_valueBoolean"),
+                                ),
+                            ],
+                        ),
                     ),
                     ast.Expr(
                         value=ast.Constant(value="polymorphic property definition")
@@ -441,7 +548,15 @@ def test_unrolls_required_polymorphic_into_class_union() -> None:
                             slice=ast.Constant("Quantity"),
                         ),
                         simple=1,
-                        value=ast.Constant(None),
+                        value=ast.Call(
+                            func=ast.Name(id="Field"),
+                            args=[],
+                            keywords=[
+                                ast.keyword(
+                                    arg="default", value=ast.Constant(value=None)
+                                ),
+                            ],
+                        ),
                     ),
                     ast.Expr(
                         value=ast.Constant(value="polymorphic property definition")
